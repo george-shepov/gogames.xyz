@@ -34,12 +34,28 @@ app.use(helmet({
     },
   },
 }));
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
+// CORS: use explicit allowlist. In production set ALLOWED_ORIGIN env var to your domain.
+// In development, defaults to localhost origins only (never a wildcard '*').
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGIN
+  ? process.env.ALLOWED_ORIGIN.split(',').map(o => o.trim())
+  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (same-origin, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 
 // Rate limiting
 const apiLimiter = rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false });
 const payLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false });
+const staticLimiter = rateLimit({ windowMs: 60_000, max: 300, standardHeaders: true, legacyHeaders: false });
 app.use('/api', apiLimiter);
 app.use('/api/create-payment-intent', payLimiter);
 
@@ -326,7 +342,7 @@ app.post('/api/bets', (req, res) => {
     return res.status(400).json({ error: 'battleId, userId, choice, amount required' });
   }
   if (!['a','b','draw'].includes(choice)) {
-    return res.status(400).json({ error: 'choice must be a, b, or draw' });
+    return res.status(400).json({ error: 'choice must be "a", "b", or "draw"' });
   }
   const battle = battles.get(battleId);
   if (!battle || !battle.bettingOpen) {
@@ -437,7 +453,8 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (err) {
-    return res.status(400).send(`Webhook error: ${err.message}`);
+    // Return plain text; do NOT reflect err.message into HTML to avoid XSS
+    return res.status(400).type('text/plain').send('Webhook signature verification failed');
   }
 
   if (event.type === 'payment_intent.succeeded') {
@@ -479,9 +496,9 @@ app.get('/api/leaderboard', (req, res) => {
 
 // ────────────────────────────────────────────────────────────
 // SPA FALLBACK — serve index.html for unknown routes
-// ────────────────────────────────────────────────────────────
+// Rate-limited to prevent file system abuse
 
-app.get('*', (req, res) => {
+app.get('*', staticLimiter, (req, res) => {
   res.sendFile(path.join(STATIC_DIR, 'index.html'));
 });
 
