@@ -284,14 +284,14 @@ h1{font-size:clamp(28px,5vw,52px);font-weight:800;color:#fff;margin-bottom:12px}
 <script>
 // ── CONFIG ──
 // Replace with your actual Stripe publishable key (set via environment or server-rendered template)
-const STRIPE_PUBLISHABLE_KEY = window.__STRIPE_PK__ || 'pk_test_placeholder';
+const STRIPE_PUBLISHABLE_KEY = window.__STRIPE_PK__ || 'pk_test_YOUR_KEY_HERE';
 let stripe, cardElement;
 let selectedGgx = 100;
 let selectedUsd = 5.00;
 
 // Init Stripe
 try {
-  if (typeof Stripe !== 'undefined' && STRIPE_PUBLISHABLE_KEY !== 'pk_test_placeholder') {
+  if (typeof Stripe !== 'undefined' && STRIPE_PUBLISHABLE_KEY !== 'pk_test_YOUR_KEY_HERE') {
     stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
     const elements = stripe.elements();
     cardElement = elements.create('card', {
@@ -306,7 +306,16 @@ try {
       document.getElementById('card-errors').textContent = error ? error.message : '';
     });
   } else {
-    document.getElementById('card-element').innerHTML = '<div style="font-size:12px;color:#c9a84c;padding:8px 0">⚠ Stripe not configured. Set <code>STRIPE_PUBLISHABLE_KEY</code> on the server. See <a href="https://github.com/george-shepov/gogames.xyz" style="color:#c9a84c">setup guide</a>.</div>';
+    // All content below is static (no user-derived data) — safe to use innerHTML
+    const msg = document.createElement('div');
+    msg.style.cssText = 'font-size:12px;color:#c9a84c;padding:8px 0';
+    msg.textContent = '⚠ Stripe not configured. Set STRIPE_PUBLISHABLE_KEY on the server. ';
+    const link = document.createElement('a');
+    link.href = 'https://github.com/george-shepov/gogames.xyz';
+    link.style.color = '#c9a84c';
+    link.textContent = 'See setup guide';
+    msg.appendChild(link);
+    document.getElementById('card-element').appendChild(msg);
   }
 } catch(e) {
   console.warn('Stripe init failed:', e);

@@ -442,7 +442,7 @@ async function testModel(side) {
     if (res.ok) { el.textContent = '✅ Connected'; el.style.color = '#10b981'; }
     else { el.textContent = '❌ Error '+res.status; el.style.color = '#ef4444'; }
   } catch(e) {
-    el.textContent = '❌ ' + (e.message.includes('fetch') ? 'CORS/network error (expected from browser)' : e.message);
+    el.textContent = '❌ ' + (e.message.includes('fetch') ? 'Browser CORS restriction — direct API calls from a browser are blocked by the provider. In production, route API calls through the GoGames server (/api/proxy) instead.' : e.message);
     el.style.color = '#f59e0b';
   }
 }
