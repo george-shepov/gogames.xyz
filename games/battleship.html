@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Battleship — GoGames.XYZ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+    }
+    .wrapper {
+      max-width: 960px;
+      padding: 16px;
+      width: 100%;
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+    .boards {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .board-container {
+      flex: 1 1 280px;
+    }
+    .board-title {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(11, 26px);
+      grid-template-rows: repeat(11, 26px);
+      border: 1px solid #374151;
+      background: #111827;
+    }
+    .cell {
+      width: 26px;
+      height: 26px;
+      border: 1px solid #1f2933;
+      box-sizing: border-box;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    .label {
+      background: #111827;
+      color: #9ca3af;
+      font-weight: 600;
+    }
+    .water {
+      background: #020617;
+      cursor: pointer;
+    }
+    .water.player {
+      cursor: default;
+    }
+    .ship {
+      background: #1e293b;
+    }
+    .ship.player {
+      background: #334155;
+    }
+    .hit {
+      background: #b91c1c;
+      color: #f9fafb;
+    }
+    .miss {
+      background: #111827;
+      color: #6b7280;
+    }
+    .status-bar {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #e5e7eb;
+    }
+    .status-bar span {
+      font-weight: 600;
+    }
+    .controls {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #22c55e;
+      color: #020617;
+      font-weight: 600;
+    }
+    button.secondary {
+      background: #4b5563;
+      color: #e5e7eb;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    .legend {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .legend span {
+      margin-right: 12px;
+    }
+    .legend-box {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: middle;
+      border: 1px solid #4b5563;
+    }
+    .box-water { background: #020617; }
+    .box-ship { background: #334155; }
+    .box-hit  { background: #b91c1c; }
+    .box-miss { background: #111827; }
+  </style>
+</head>
+<body>
+<nav style="position:sticky;top:0;z-index:200;background:rgba(8,9,10,.95);backdrop-filter:blur(12px);border-bottom:1px solid #1a2030;padding:0 16px;display:flex;align-items:center;gap:12px;height:52px;width:100%;box-sizing:border-box">
+  <a href="/" style="font-size:15px;font-weight:800;color:#c9a84c;letter-spacing:.04em;text-decoration:none">GoGames<span style="color:#fff;font-weight:300">.XYZ</span></a>
+  <a href="/games/arena.html" style="color:#4a5568;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px;transition:color .2s">♟ Board Games</a>
+  <a href="/games/tictactoe.html" style="color:#4a5568;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px">⬡ 10×10 TTT</a>
+  <a href="/games/snake.html" style="color:#4a5568;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px">🐍 Snake</a>
+  <a href="/games/math-raindrops.html" style="color:#4a5568;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px">🔢 Math</a>
+  <a href="/ai-arena.html" style="color:#4a5568;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px">⚔ AI Arena</a>
+  <a href="/" style="margin-left:auto;background:#c9a84c;border:none;color:#08090a;padding:6px 14px;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap">← Home</a>
+</nav>
+
+<div class="wrapper">
+  <h1>Paper-Style Battleship</h1>
+  <div class="subtitle">
+    10×10 grids, classic fleet. Left: your ships (visible). Right: enemy waters (hidden). Click on enemy squares to fire.
+  </div>
+
+  <div class="boards">
+    <div class="board-container">
+      <div class="board-title">Your Fleet</div>
+      <div id="playerGrid" class="grid"></div>
+    </div>
+    <div class="board-container">
+      <div class="board-title">Enemy Waters</div>
+      <div id="enemyGrid" class="grid"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="restartBtn">New Game</button>
+    <button class="secondary" id="showEnemyBtn">Toggle Enemy Ships (cheat)</button>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    Status: <span>Your turn</span>
+  </div>
+
+  <div class="legend">
+    <span><span class="legend-box box-water"></span>Water</span>
+    <span><span class="legend-box box-ship"></span>Your ship</span>
+    <span><span class="legend-box box-hit"></span>Hit</span>
+    <span><span class="legend-box box-miss"></span>Miss</span>
+  </div>
+</div>
+
+<script>
+  // --- CONFIG --------------------------------------------------------
+  const BOARD_SIZE = 10;
+  const SHIPS = [
+    { name: "Carrier",    size: 5 },
+    { name: "Battleship", size: 4 },
+    { name: "Cruiser",    size: 3 },
+    { name: "Submarine",  size: 3 },
+    { name: "Destroyer",  size: 2 },
+  ];
+
+  // Board cell meanings:
+  // -1 = empty water
+  //  0..n = ship index
+  // -2 = miss
+  // -3 = hit
+
+  let playerBoard, enemyBoard;
+  let playerShips, enemyShips;
+  let gameOver = false;
+  let currentTurn = "player";
+  let revealEnemy = false;
+
+  const playerGridEl = document.getElementById("playerGrid");
+  const enemyGridEl  = document.getElementById("enemyGrid");
+  const statusBarEl  = document.getElementById("statusBar").querySelector("span");
+  const restartBtn   = document.getElementById("restartBtn");
+  const showEnemyBtn = document.getElementById("showEnemyBtn");
+
+  // --- INIT ----------------------------------------------------------
+  function initGame() {
+    gameOver = false;
+    currentTurn = "player";
+    revealEnemy = false;
+
+    playerBoard = createEmptyBoard();
+    enemyBoard  = createEmptyBoard();
+
+    playerShips = SHIPS.map(s => ({ ...s, hits: 0 }));
+    enemyShips  = SHIPS.map(s => ({ ...s, hits: 0 }));
+
+    autoPlaceFleet(playerBoard, playerShips);
+    autoPlaceFleet(enemyBoard, enemyShips);
+
+    buildGrid(playerGridEl, true);
+    buildGrid(enemyGridEl, false);
+    updateStatus("Your turn");
+  }
+
+  function createEmptyBoard() {
+    const board = [];
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      const row = [];
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        row.push(-1);
+      }
+      board.push(row);
+    }
+    return board;
+  }
+
+  function autoPlaceFleet(board, ships) {
+    for (let i = 0; i < ships.length; i++) {
+      placeShip(board, i, ships[i].size);
+    }
+  }
+
+  function placeShip(board, shipIndex, size) {
+    while (true) {
+      const horizontal = Math.random() < 0.5;
+      const r = Math.floor(Math.random() * BOARD_SIZE);
+      const c = Math.floor(Math.random() * BOARD_SIZE);
+
+      if (horizontal) {
+        if (c + size > BOARD_SIZE) continue;
+        let clear = true;
+        for (let j = 0; j < size; j++) {
+          if (board[r][c + j] !== -1) {
+            clear = false;
+            break;
+          }
+        }
+        if (!clear) continue;
+        for (let j = 0; j < size; j++) {
+          board[r][c + j] = shipIndex;
+        }
+      } else {
+        if (r + size > BOARD_SIZE) continue;
+        let clear = true;
+        for (let j = 0; j < size; j++) {
+          if (board[r + j][c] !== -1) {
+            clear = false;
+            break;
+          }
+        }
+        if (!clear) continue;
+        for (let j = 0; j < size; j++) {
+          board[r + j][c] = shipIndex;
+        }
+      }
+      break;
+    }
+  }
+
+  // --- GRID RENDERING ------------------------------------------------
+  function buildGrid(container, isPlayer) {
+    container.innerHTML = "";
+
+    // Row 0: blank corner + 1..10
+    for (let r = 0; r <= BOARD_SIZE; r++) {
+      for (let c = 0; c <= BOARD_SIZE; c++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+
+        if (r === 0 && c === 0) {
+          cell.classList.add("label");
+          cell.textContent = "";
+        } else if (r === 0) {
+          // column label
+          cell.classList.add("label");
+          cell.textContent = c;
+        } else if (c === 0) {
+          // row label
+          cell.classList.add("label");
+          cell.textContent = String.fromCharCode(64 + r);
+        } else {
+          const boardR = r - 1;
+          const boardC = c - 1;
+          const idPrefix = isPlayer ? "P" : "E";
+
+          cell.dataset.r = boardR;
+          cell.dataset.c = boardC;
+          cell.dataset.board = isPlayer ? "player" : "enemy";
+          cell.id = `${idPrefix}-${boardR}-${boardC}`;
+
+          if (isPlayer) {
+            cell.classList.add("water", "player");
+            const val = playerBoard[boardR][boardC];
+            if (val >= 0) {
+              cell.classList.add("ship", "player");
+            }
+          } else {
+            cell.classList.add("water");
+            cell.addEventListener("click", onEnemyCellClick);
+          }
+        }
+
+        container.appendChild(cell);
+      }
+    }
+
+    // After building, apply hit/miss classes (if any state already)
+    refreshBoards();
+  }
+
+  function refreshBoards() {
+    // Player board
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        const cellEl = document.getElementById(`P-${r}-${c}`);
+        const val = playerBoard[r][c];
+        if (!cellEl) continue;
+
+        cellEl.classList.remove("hit", "miss");
+        if (val === -2) {
+          cellEl.classList.add("miss");
+        } else if (val === -3) {
+          cellEl.classList.add("hit");
+        }
+      }
+    }
+
+    // Enemy board
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        const cellEl = document.getElementById(`E-${r}-${c}`);
+        const val = enemyBoard[r][c];
+        if (!cellEl) continue;
+
+        cellEl.classList.remove("hit", "miss", "ship");
+        if (val === -2) {
+          cellEl.classList.add("miss");
+        } else if (val === -3) {
+          cellEl.classList.add("hit");
+        } else if (val >= 0 && revealEnemy) {
+          cellEl.classList.add("ship");
+        }
+      }
+    }
+  }
+
+  // --- GAME LOGIC ----------------------------------------------------
+  function onEnemyCellClick(e) {
+    if (gameOver || currentTurn !== "player") return;
+
+    const cell = e.currentTarget;
+    const r = parseInt(cell.dataset.r, 10);
+    const c = parseInt(cell.dataset.c, 10);
+    const val = enemyBoard[r][c];
+
+    if (val === -2 || val === -3) {
+      // Already shot here
+      updateStatus("You already fired at that square.");
+      return;
+    }
+
+    if (val === -1) {
+      // Miss
+      enemyBoard[r][c] = -2;
+      refreshBoards();
+      updateStatus("Miss. Enemy's turn.");
+      currentTurn = "enemy";
+      setTimeout(aiTurn, 650);
+    } else if (val >= 0) {
+      // Hit
+      enemyBoard[r][c] = -3;
+      enemyShips[val].hits++;
+      refreshBoards();
+
+      const shipName = enemyShips[val].name;
+      if (enemyShips[val].hits === enemyShips[val].size) {
+        updateStatus(`Hit – you sunk the enemy ${shipName}!`);
+      } else {
+        updateStatus("Hit! Fire again.");
+      }
+
+      if (allShipsSunk(enemyShips)) {
+        gameOver = true;
+        updateStatus("All enemy ships sunk. You win!");
+        return;
+      }
+      // Player continues on hit, classic rule
+    }
+  }
+
+  function aiTurn() {
+    if (gameOver) return;
+
+    // Random search for untargeted square
+    let r, c, val;
+    while (true) {
+      r = Math.floor(Math.random() * BOARD_SIZE);
+      c = Math.floor(Math.random() * BOARD_SIZE);
+      val = playerBoard[r][c];
+      if (val !== -2 && val !== -3) break;
+    }
+
+    if (val === -1) {
+      // Miss
+      playerBoard[r][c] = -2;
+      refreshBoards();
+      updateStatus("Enemy missed. Your turn.");
+      currentTurn = "player";
+    } else if (val >= 0) {
+      // Hit
+      playerBoard[r][c] = -3;
+      playerShips[val].hits++;
+      refreshBoards();
+
+      const shipName = playerShips[val].name;
+      if (playerShips[val].hits === playerShips[val].size) {
+        updateStatus(`Enemy hit and sunk your ${shipName}.`);
+      } else {
+        updateStatus("Enemy hit your ship.");
+      }
+
+      if (allShipsSunk(playerShips)) {
+        gameOver = true;
+        updateStatus("All your ships are sunk. Enemy wins.");
+        return;
+      }
+
+      // Simple AI: stops after one shot even if hit
+      currentTurn = "player";
+      updateStatus("Enemy finished their move. Your turn.");
+    }
+  }
+
+  function allShipsSunk(fleet) {
+    return fleet.every(s => s.hits >= s.size);
+  }
+
+  function updateStatus(text) {
+    statusBarEl.textContent = text;
+  }
+
+  // --- CONTROLS ------------------------------------------------------
+  restartBtn.addEventListener("click", () => {
+    initGame();
+  });
+
+  showEnemyBtn.addEventListener("click", () => {
+    revealEnemy = !revealEnemy;
+    refreshBoards();
+  });
+
+  // --- START ---------------------------------------------------------
+  initGame();
+</script>
+<script src="../shared/help-content.js"></script>
+<script src="../shared/f1-help-nav.js"></script>
+</body>
+</html>

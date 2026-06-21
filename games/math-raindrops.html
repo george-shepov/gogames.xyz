@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Math Raindrops — GoGames.XYZ</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-family:Arial,sans-serif;color:#fff;}
+  body{min-height:100dvh;overflow:auto}
+  .wrap{max-width:1100px;margin:0 auto;padding:10px;min-height:calc(100dvh - 44px)}
+  .topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+  .btn{cursor:pointer;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:8px 14px;font-weight:700}
+  .btn[aria-pressed="true"]{background:rgba(255,255,255,.28)}
+  .field{position:relative;border:2px solid rgba(255,255,255,.4);border-radius:14px;overflow:hidden;background:rgba(0,0,0,.08);width:100%;height:clamp(280px,56dvh,640px);}
+  .raindrop{position:absolute;top:-40px;left:0;font-size:clamp(15px,1.6vw,18px);font-weight:bold;padding:clamp(7px,1vw,9px) clamp(9px,1.2vw,12px);border-radius:50% 50% 50% 0;background:linear-gradient(45deg,#4facfe,#00f2fe);transform:rotate(-45deg);color:#fff;text-shadow:1px 1px 2px rgba(0,0,0,.5);animation:fallTop linear forwards;animation-play-state:running}
+  @keyframes fallTop{from{top:-40px} to{top:calc(100% - 40px)}}
+  input.answer{font-size:18px;padding:10px 12px;border-radius:24px;border:none;text-align:center;width:min(92vw,280px);margin:10px auto;display:block}
+  .paused::after{content:"PAUSED";position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.5);font-size:48px;font-weight:bold;}
+  /* Multiple-choice grid */
+  .mc-panel{display:none;margin:10px auto 0;max-width:420px}
+  .mc-board{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:1fr 1fr 1fr;
+    gap:8px;
+    min-height:260px;
+    touch-action:none;
+    user-select:none;
+  }
+  .mc-option{
+    cursor:pointer;border:none;border-radius:14px;padding:14px 10px;font-weight:800;color:#fff;
+    background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);text-align:center;
+    min-height:70px;font-size:17px;
+  }
+  .mc-option small{display:block;font-size:11px;opacity:.9;margin-top:4px;letter-spacing:.03em}
+  .mc-option.flash{outline:2px solid rgba(255,255,255,.75)}
+  .mc-center{
+    grid-column:2;grid-row:2;display:grid;place-items:center;text-align:center;
+    border-radius:999px;border:1px dashed rgba(255,255,255,.5);background:rgba(0,0,0,.16);
+    font-size:12px;padding:10px;
+  }
+  .mc-up{grid-column:2;grid-row:1}
+  .mc-left{grid-column:1;grid-row:2}
+  .mc-right{grid-column:3;grid-row:2}
+  .mc-down{grid-column:2;grid-row:3}
+  .hint{opacity:.9;font-size:12px;text-align:center}
+  @media (max-width: 680px){
+    .wrap{padding:8px}
+    .topbar{gap:8px}
+    .btn{padding:8px 12px}
+    .field{height:clamp(230px,48dvh,460px)}
+    .raindrop{font-size:14px;padding:6px 9px}
+  }
+</style>
+</head>
+<body>
+<nav style="position:sticky;top:0;z-index:200;background:rgba(8,9,10,.95);backdrop-filter:blur(12px);border-bottom:1px solid #1a2030;padding:0 16px;display:flex;align-items:center;gap:12px;height:52px;width:100%;box-sizing:border-box">
+  <a href="/" style="font-size:15px;font-weight:800;color:#c9a84c;letter-spacing:.04em;text-decoration:none">GoGames<span style="color:#fff;font-weight:300">.XYZ</span></a>
+  <a href="/games/arena.html" style="color:#4a5568;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px;transition:color .2s">♟ Board Games</a>
+  <a href="/games/tictactoe.html" style="color:#4a5568;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px">⬡ 10×10 TTT</a>
+  <a href="/games/snake.html" style="color:#4a5568;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px">🐍 Snake</a>
+  <a href="/games/math-raindrops.html" style="color:#c9a84c;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px">🔢 Math</a>
+  <a href="/ai-arena.html" style="color:#4a5568;text-decoration:none;padding:5px 10px;border-radius:6px;font-size:12px">⚔ AI Arena</a>
+  <a href="/" style="margin-left:auto;background:#c9a84c;border:none;color:#08090a;padding:6px 14px;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap">← Home</a>
+</nav>
+
+
+<div class="wrap">
+  <h1 style="text-align:center;margin:8px 0;">Math Raindrops – Gentle Adaptive</h1>
+  <p style="text-align:center;margin:0 0 8px;">Space clears typed answer • P pauses/resumes • Multiple Choice supports tap, arrows, and swipe.</p>
+  <div class="topbar">
+    <button id="pauseBtn" class="btn" title="P">⏸️ Pause</button>
+    <button id="modeInputBtn" class="btn" aria-pressed="true">📝 Free Input</button>
+    <button id="modeMCBtn" class="btn" aria-pressed="false">🔢 Multiple Choice</button>
+  </div>
+
+  <div class="field" id="field"></div>
+  <input id="ans" class="answer" placeholder="Type answer & press Enter" />
+  <div id="mcPanel" class="mc-panel">
+    <div id="mcBoard" class="mc-board">
+      <button class="mc-option mc-up" data-dir="up"><span>-</span><small>UP</small></button>
+      <button class="mc-option mc-left" data-dir="left"><span>-</span><small>LEFT</small></button>
+      <button class="mc-option mc-right" data-dir="right"><span>-</span><small>RIGHT</small></button>
+      <button class="mc-option mc-down" data-dir="down"><span>-</span><small>DOWN</small></button>
+      <div class="mc-center">Swipe from center</div>
+    </div>
+    <div class="hint">No typing mode: tap direction buttons, use arrow keys, or swipe from center.</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const field = document.getElementById('field');
+  const input = document.getElementById('ans');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const modeInputBtn = document.getElementById('modeInputBtn');
+  const modeMCBtn = document.getElementById('modeMCBtn');
+  const mcPanel = document.getElementById('mcPanel');
+  const mcBoard = document.getElementById('mcBoard');
+  const mcButtons = {
+    up: mcBoard.querySelector('[data-dir="up"]'),
+    right: mcBoard.querySelector('[data-dir="right"]'),
+    down: mcBoard.querySelector('[data-dir="down"]'),
+    left: mcBoard.querySelector('[data-dir="left"]')
+  };
+
+  let level=1,score=0,lives=3,active=true,paused=false,drops=[],timer=null;
+  let correct=0,total=0,streak=0,missStreak=0, mode='input';
+  let mcState = null;
+  let swipeStart = null;
+
+  const rand = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+
+  function ensureFocus(){
+    if(mode!=='input') return;
+    // Focus the input reliably after layout/overlay/pause changes
+    setTimeout(()=>{ input.focus(); input.select?.(); }, 0);
+  }
+
+  function spawn(){
+    if(!active||paused) return;
+    if(drops.length>=maxConcurrent()) return schedule();
+    const p = makeProblem();
+    const el = document.createElement('div');
+    el.className='raindrop';
+    el.textContent=p.txt; el.dataset.a=p.ans;
+    el.style.left=rand(10,80)+'%';
+    const dur = fallSpeed();
+    el.style.animationDuration=dur+'s';
+    if(paused) el.style.animationPlayState='paused';
+    field.appendChild(el);
+    drops.push(el);
+    el._to=setTimeout(()=>{if(el.parentElement){remove(el);lose();}},dur*1000);
+    schedule();
+    if(mode==='mc') buildMC();
+  }
+
+  function schedule(){clearTimeout(timer); timer=setTimeout(spawn,spawnRate());}
+  function remove(e){clearTimeout(e._to); if(e.parentElement) e.remove(); drops=drops.filter(d=>d!==e);}
+
+  function makeProblem(){
+    const ops = level<3?['+','-']:level<5?['+','-','*']:['+','-','*','/'];
+    const op=ops[rand(0,ops.length-1)];
+    let a,b,ans;
+    if(op==='+'){a=rand(1,9*level);b=rand(1,9*level);ans=a+b;}
+    else if(op==='-'){a=rand(5,9*level);b=rand(1,a);ans=a-b;}
+    else if(op==='*'){a=rand(2,3+level);b=rand(2,3+level);ans=a*b;}
+    else{b=rand(2,3+level);ans=rand(2,3+level);a=b*ans;}
+    return{txt:`${a} ${op} ${b}`,ans};
+  }
+
+  function fallSpeed(){
+    const height=window.innerHeight; // px
+    let base = Math.max(10 - (height/300), 4.5); // seconds
+    base -= Math.min(level,5)*0.3;
+    if(streak>5) base-=0.4; if(streak>10) base-=0.4;
+    if(missStreak>2) base+=0.8; if(missStreak>4) base+=0.8;
+    return Math.max(base,3.5);
+  }
+
+  function spawnRate(){
+    let base=2600; base-=level*120; if(streak>5) base-=150; if(missStreak>2) base+=350;
+    return Math.max(base,1100);
+  }
+
+  function maxConcurrent(){
+    let base=2; if(level>2) base++; if(streak>8) base++; if(missStreak>1) base--; return Math.max(1,base);
+  }
+
+  // Free input: pop lowest matching drop
+  input.addEventListener('keydown',e=>{
+    if(e.code==='Space'){
+      e.preventDefault();
+      input.value='';
+      return;
+    }
+    if(e.key==='Enter'&&active&&!paused&&mode==='input'){
+      const v=parseInt(input.value,10); input.value=''; if(!isFinite(v))return;
+      total++;
+      const matches=drops.filter(d=>parseInt(d.dataset.a,10)===v);
+      if(matches.length){
+        let best=matches[0];
+        let bestTop=matches[0].offsetTop;
+        for(const d of matches){ if(d.offsetTop>bestTop){best=d;bestTop=d.offsetTop;} }
+        remove(best); score+=10; correct++; streak++; missStreak=0;
+      } else { score=Math.max(0,score-2); streak=0; missStreak++; }
+      adapt();
+      if(mode==='mc') buildMC();
+    }
+  });
+
+  // ==== Multiple Choice Mode ====
+  modeInputBtn.onclick = ()=> setMode('input');
+  modeMCBtn.onclick    = ()=> setMode('mc');
+
+  function setMode(m){
+    mode=m;
+    modeInputBtn.setAttribute('aria-pressed', m==='input');
+    modeMCBtn.setAttribute('aria-pressed', m==='mc');
+    input.style.display = (m==='input') ? 'block':'none';
+    mcPanel.style.display = (m==='mc') ? 'block':'none';
+    if(m==='mc') buildMC();
+    else mcState = null;
+    ensureFocus();
+  }
+
+  function pickLowestDrop(){
+    if(drops.length===0) return null;
+    let lowest=drops[0], top=drops[0].offsetTop;
+    for(const d of drops){ if(d.offsetTop>top){lowest=d; top=d.offsetTop;} }
+    return lowest;
+  }
+
+  function shuffle(list){
+    for(let i=list.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [list[i],list[j]]=[list[j],list[i]];
+    }
+    return list;
+  }
+
+  function buildChoiceSet(ans){
+    const distractors = new Set();
+    const seed = [
+      ans + (rand(0,1)?1:-1),
+      ans + (rand(0,1)?10:-10),
+      ans + rand(3,8) * (rand(0,1)?1:-1),
+      -ans
+    ];
+    seed.forEach(v=>{ if(v!==ans) distractors.add(v); });
+    while(distractors.size < 3){
+      const v = ans + rand(-20,20);
+      if(v!==ans) distractors.add(v);
+    }
+    return shuffle([ans, ...[...distractors].slice(0,3)]);
+  }
+
+  function renderMCButtons(){
+    const dirs = ['up','right','down','left'];
+    dirs.forEach(dir=>{
+      const btn = mcButtons[dir];
+      const value = mcState ? mcState.byDir[dir] : null;
+      const label = btn.querySelector('span');
+      label.textContent = (value==null) ? '-' : String(value);
+      btn.disabled = value==null;
+      btn.onclick = ()=> chooseDirection(dir);
+    });
+  }
+
+  function buildMC(){
+    if(mode!=='mc') return;
+    const target = pickLowestDrop();
+    if(!target){
+      mcState = null;
+      renderMCButtons();
+      return;
+    }
+    const correctAns = parseInt(target.dataset.a,10);
+    const values = buildChoiceSet(correctAns);
+    const dirs = ['up','right','down','left'];
+    const byDir = {};
+    dirs.forEach((dir,idx)=>{ byDir[dir] = values[idx]; });
+    mcState = { target, correctAns, byDir };
+    renderMCButtons();
+  }
+
+  function chooseDirection(dir){
+    if(mode!=='mc' || paused || !active || !mcState) return;
+    const pick = mcState.byDir[dir];
+    if(!isFinite(pick)) return;
+    const btn = mcButtons[dir];
+    if(btn){
+      btn.classList.add('flash');
+      setTimeout(()=>btn.classList.remove('flash'), 180);
+    }
+    gradeMC(mcState.target, pick, mcState.correctAns);
+  }
+
+  function gradeMC(target, pick, correctAns){
+    total++;
+    if(pick===correctAns){ removeDropAndReward(target); }
+    else if(Math.abs(pick-correctAns)===1){ score+=3; streak++; } // near-miss gentle reward
+    else if(pick===-correctAns){ score=Math.max(0, score-2); streak=0; missStreak++; }
+    else if(Math.abs(pick-correctAns)>=15){ score=Math.max(0, score-5); streak=0; missStreak++; }
+    else { score+=1; }
+    adapt();
+    buildMC();
+    ensureFocus();
+  }
+
+  function removeDropAndReward(target){
+    if(!target) return;
+    remove(target); score+=10; correct++; streak++; missStreak=0;
+  }
+
+  function adapt(){
+    if(correct>0&&correct%10===0){level++;feedback(`Leveled up to ${level}`);} // reward flow
+    if(missStreak>=5){level=Math.max(1,level-1);feedback(`Taking it easy: Level ${level}`);missStreak=0;} // gentle downgrade
+  }
+
+  function lose(){
+    lives--;streak=0;missStreak++;
+    if(mode==='mc') buildMC();
+    if(lives<=0){end();}
+  }
+  function end(){active=false;alert(`Game Over! Score ${score}`);}
+
+  function feedback(msg){
+    const tag=document.createElement('div');tag.textContent=msg;tag.style.position='absolute';tag.style.top='50%';tag.style.left='50%';tag.style.transform='translate(-50%,-50%)';tag.style.background='rgba(0,0,0,.6)';tag.style.padding='10px 20px';tag.style.borderRadius='8px';field.appendChild(tag);setTimeout(()=>tag.remove(),1200);
+  }
+
+  // Pause/resume and freeze animations
+  function applyPauseState(){
+    for(const d of drops){ d.style.animationPlayState = paused? 'paused':'running'; }
+    if(paused){ field.classList.add('paused'); } else { field.classList.remove('paused'); schedule(); }
+    ensureFocus();
+  }
+
+  function handleSwipeStart(e){
+    if(mode!=='mc' || paused || !active || !mcState) return;
+    const rect = mcBoard.getBoundingClientRect();
+    const cx = rect.left + rect.width/2;
+    const cy = rect.top + rect.height/2;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const centerRadius = Math.min(rect.width, rect.height) * 0.18;
+    if(Math.hypot(dx,dy) > centerRadius){
+      swipeStart = null;
+      return;
+    }
+    swipeStart = { x:e.clientX, y:e.clientY };
+  }
+
+  function handleSwipeEnd(e){
+    if(!swipeStart || mode!=='mc') return;
+    const dx = e.clientX - swipeStart.x;
+    const dy = e.clientY - swipeStart.y;
+    swipeStart = null;
+    if(Math.hypot(dx,dy) < 26) return;
+    const dir = Math.abs(dx) > Math.abs(dy) ? (dx>0 ? 'right' : 'left') : (dy>0 ? 'down' : 'up');
+    chooseDirection(dir);
+  }
+
+  mcBoard.addEventListener('pointerdown', handleSwipeStart);
+  mcBoard.addEventListener('pointerup', handleSwipeEnd);
+  mcBoard.addEventListener('pointercancel', ()=>{ swipeStart = null; });
+
+  window.addEventListener('keydown',e=>{
+    if(e.code==='KeyP'){
+      e.preventDefault();
+      paused=!paused;
+      applyPauseState();
+      return;
+    }
+    if(e.code==='Space' && mode==='input'){
+      e.preventDefault();
+      input.value='';
+      return;
+    }
+    if(mode==='mc'){
+      if(e.key==='ArrowUp'){ e.preventDefault(); chooseDirection('up'); return; }
+      if(e.key==='ArrowRight'){ e.preventDefault(); chooseDirection('right'); return; }
+      if(e.key==='ArrowDown'){ e.preventDefault(); chooseDirection('down'); return; }
+      if(e.key==='ArrowLeft'){ e.preventDefault(); chooseDirection('left'); }
+    }
+  });
+  pauseBtn.onclick = ()=>{ paused=!paused; applyPauseState(); };
+
+  // Recalculate speeds on resize (affects new drops)
+  window.addEventListener('resize', ()=>{ /* future drops use new fallSpeed() */ });
+
+  function start(){
+    active=true;paused=false;level=1;score=0;lives=3;streak=0;missStreak=0;correct=0;total=0;
+    drops.forEach(d=>d.remove());drops=[];schedule();
+    setMode('input'); // default to input
+    ensureFocus();
+  }
+  start();
+})();
+</script>
+  <script src="../shared/help-content.js"></script>
+  <script src="../shared/f1-help-nav.js"></script>
+</body>
+</html>
