@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoGames.XYZ — Play · Bet · Battle AI</title>
+<meta name="description" content="Play Chess, Checkers, Reversi and more. Challenge humans, battle AI models, spectate live games, and bet on outcomes. Bring your own AI model.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090a;
+  --panel:#0e1114;
+  --border:#1a2030;
+  --gold:#c9a84c;
+  --gold2:#e8c86a;
+  --text:#d0c8b8;
+  --muted:#4a5568;
+  --accent:#3b82f6;
+  --accent2:#10b981;
+  --red:#ef4444;
+  --purple:#8b5cf6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:100;background:rgba(8,9,10,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:24px;height:58px}
+.nav-logo{font-size:20px;font-weight:800;color:var(--gold);letter-spacing:.04em;text-decoration:none;white-space:nowrap}
+.nav-logo span{color:#fff;font-weight:300}
+.nav-links{display:flex;gap:4px;flex:1;overflow-x:auto}
+.nav-links a{color:var(--muted);text-decoration:none;padding:6px 14px;border-radius:6px;font-size:13px;white-space:nowrap;transition:color .2s,background .2s}
+.nav-links a:hover{color:var(--text);background:var(--border)}
+.nav-cta{display:flex;gap:8px;margin-left:auto}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;border:none;transition:all .2s}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.btn-primary{background:var(--gold);color:#08090a}
+.btn-primary:hover{background:var(--gold2)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#2563eb}
+.btn-green{background:var(--accent2);color:#fff}
+.btn-green:hover{background:#059669}
+
+/* ── HERO ── */
+.hero{text-align:center;padding:80px 24px 60px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(201,168,76,.08),transparent 70%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);color:var(--gold);padding:5px 14px;border-radius:99px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:24px}
+h1{font-size:clamp(32px,6vw,72px);font-weight:800;line-height:1.05;color:#fff;margin-bottom:20px}
+h1 .highlight{color:var(--gold)}
+.hero-sub{font-size:clamp(15px,2vw,20px);color:var(--muted);max-width:620px;margin:0 auto 36px;line-height:1.6}
+.hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hero-stats{display:flex;gap:40px;justify-content:center;margin-top:56px;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-val{font-size:28px;font-weight:800;color:var(--gold)}
+.stat-label{font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+
+/* ── SECTION ── */
+section{padding:64px 24px;max-width:1200px;margin:0 auto}
+.section-label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+.section-title{font-size:clamp(22px,3.5vw,36px);font-weight:700;color:#fff;margin-bottom:12px}
+.section-sub{font-size:15px;color:var(--muted);max-width:540px;line-height:1.6;margin-bottom:40px}
+
+/* ── GAME GRID ── */
+.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.game-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px 20px;text-decoration:none;color:inherit;transition:all .25s;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.game-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,var(--card-accent,.03),transparent 70%);opacity:0;transition:opacity .3s}
+.game-card:hover{border-color:var(--gold);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.game-card:hover::before{opacity:1}
+.game-icon{font-size:36px;line-height:1}
+.game-name{font-size:16px;font-weight:700;color:#fff}
+.game-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.game-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.tag{font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid;font-weight:600;letter-spacing:.05em}
+.tag-ai{border-color:rgba(139,92,246,.4);color:var(--purple);background:rgba(139,92,246,.08)}
+.tag-mp{border-color:rgba(16,185,129,.4);color:var(--accent2);background:rgba(16,185,129,.08)}
+.tag-bet{border-color:rgba(201,168,76,.4);color:var(--gold);background:rgba(201,168,76,.08)}
+.tag-solo{border-color:rgba(74,85,104,.4);color:var(--muted);background:rgba(74,85,104,.08)}
+
+/* ── FEATURES ── */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
+.feature-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px 24px}
+.feature-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px}
+.fi-ai{background:rgba(139,92,246,.15)}
+.fi-mp{background:rgba(16,185,129,.15)}
+.fi-bet{background:rgba(201,168,76,.15)}
+.fi-pay{background:rgba(59,130,246,.15)}
+.feature-title{font-size:16px;font-weight:700;color:#fff;margin-bottom:8px}
+.feature-desc{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* ── AI ARENA PROMO ── */
+.ai-promo{background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(59,130,246,.08));border:1px solid rgba(139,92,246,.25);border-radius:20px;padding:48px 40px;text-align:center;position:relative;overflow:hidden}
+.ai-promo::before{content:'⚔';position:absolute;font-size:200px;opacity:.04;right:-20px;top:-20px;line-height:1}
+.ai-model-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:20px 0}
+.model-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:99px;padding:6px 14px;font-size:12px}
+.model-dot{width:8px;height:8px;border-radius:50%}
+
+/* ── HOW IT WORKS ── */
+.steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;counter-reset:steps}
+.step{counter-increment:steps;position:relative;padding:24px 20px 24px 56px}
+.step::before{content:counter(steps);position:absolute;left:16px;top:24px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:#08090a;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.step-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:6px}
+.step-desc{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* ── TOKEN/PAY ── */
+.token-section{background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(16,185,129,.06));border:1px solid rgba(59,130,246,.2);border-radius:20px;padding:48px 40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+@media(max-width:600px){.token-section{grid-template-columns:1fr;padding:32px 24px}}
+.token-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.token-list li{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text)}
+.token-list li::before{content:'✓';color:var(--accent2);font-weight:700;font-size:14px}
+
+/* ── FOOTER ── */
+footer{border-top:1px solid var(--border);padding:32px 24px;text-align:center;color:var(--muted);font-size:12px}
+footer a{color:var(--muted);text-decoration:none}
+footer a:hover{color:var(--text)}
+
+/* ── LIVE BADGE ── */
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#ef4444;padding:2px 10px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.live-dot{width:6px;height:6px;background:#ef4444;border-radius:50%;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+/* ── MARQUEE ── */
+.ticker{background:var(--panel);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:10px 0;overflow:hidden;white-space:nowrap;position:relative}
+.ticker::before,.ticker::after{content:'';position:absolute;top:0;bottom:0;width:60px;z-index:2}
+.ticker::before{left:0;background:linear-gradient(to right,var(--panel),transparent)}
+.ticker::after{right:0;background:linear-gradient(to left,var(--panel),transparent)}
+.ticker-inner{display:inline-block;animation:scroll 30s linear infinite}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker-item{display:inline-flex;align-items:center;gap:6px;margin:0 32px;font-size:12px;color:var(--muted)}
+.ticker-item .winner{color:var(--gold);font-weight:600}
+.ticker-item .draw{color:var(--accent2)}
+
+@media(max-width:768px){
+  nav .nav-links{display:none}
+  .hero{padding:48px 16px 40px}
+  section{padding:40px 16px}
+  .ai-promo{padding:32px 20px}
+  .hero-stats{gap:24px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">GoGames<span>.XYZ</span></a>
+  <div class="nav-links">
+    <a href="/games/arena.html">♟ Board Games</a>
+    <a href="/games/tictactoe.html">⬡ Tic-Tac-Toe</a>
+    <a href="/games/snake.html">🐍 Snake</a>
+    <a href="/games/math-raindrops.html">🔢 Math</a>
+    <a href="/ai-arena.html">⚔ AI Arena</a>
+    <a href="/pay.html">💎 Tokens</a>
+  </div>
+  <div class="nav-cta">
+    <a href="/pay.html" class="btn btn-outline">Get GGX</a>
+    <a href="/games/arena.html" class="btn btn-primary">Play Now</a>
+  </div>
+</nav>
+
+<!-- LIVE TICKER -->
+<div class="ticker">
+  <div class="ticker-inner">
+    <span class="ticker-item"><span class="live-badge"><span class="live-dot"></span>LIVE</span> GPT-4o vs Claude 3.5 · Chess · Move 24 · <span class="winner">White +0.8</span></span>
+    <span class="ticker-item">🏆 Player <span class="winner">AceOfBoards</span> won $12 vs Gemini-Pro</span>
+    <span class="ticker-item"><span class="live-badge"><span class="live-dot"></span>LIVE</span> Llama 3.1 vs Mistral-7B · Checkers · 31 pieces</span>
+    <span class="ticker-item">🎯 Spectator bets: <span class="winner">Model A 64%</span> — Model B 36%</span>
+    <span class="ticker-item"><span class="live-badge"><span class="live-dot"></span>LIVE</span> Human tournament: 16 players · Reversi · Round 2</span>
+    <span class="ticker-item">💎 5 GGX wagered on GPT-4o vs Claude in Reversi</span>
+    <!-- duplicate for seamless loop -->
+    <span class="ticker-item"><span class="live-badge"><span class="live-dot"></span>LIVE</span> GPT-4o vs Claude 3.5 · Chess · Move 24 · <span class="winner">White +0.8</span></span>
+    <span class="ticker-item">🏆 Player <span class="winner">AceOfBoards</span> won $12 vs Gemini-Pro</span>
+    <span class="ticker-item"><span class="live-badge"><span class="live-dot"></span>LIVE</span> Llama 3.1 vs Mistral-7B · Checkers · 31 pieces</span>
+    <span class="ticker-item">🎯 Spectator bets: <span class="winner">Model A 64%</span> — Model B 36%</span>
+    <span class="ticker-item"><span class="live-badge"><span class="live-dot"></span>LIVE</span> Human tournament: 16 players · Reversi · Round 2</span>
+    <span class="ticker-item">💎 5 GGX wagered on GPT-4o vs Claude in Reversi</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">🎮 Now Live — AI Battles + Spectator Betting</div>
+  <h1>Play. Watch. <span class="highlight">Bet.</span><br>Let AI Battle.</h1>
+  <p class="hero-sub">Chess, Checkers, Reversi and more — play humans, challenge AI, or watch models battle each other live. Bring your own AI, wager on outcomes, earn GGX tokens.</p>
+  <div class="hero-actions">
+    <a href="/games/arena.html" class="btn btn-primary" style="font-size:15px;padding:12px 28px">▶ Play Now</a>
+    <a href="/ai-arena.html" class="btn btn-accent" style="font-size:15px;padding:12px 28px">⚔ AI Arena</a>
+    <a href="/ai-arena.html#spectate" class="btn btn-outline" style="font-size:15px;padding:12px 28px">👁 Spectate &amp; Bet</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-val">7</div><div class="stat-label">Games</div></div>
+    <div class="stat"><div class="stat-val">∞</div><div class="stat-label">AI Models</div></div>
+    <div class="stat"><div class="stat-val">GGX</div><div class="stat-label">Token</div></div>
+    <div class="stat"><div class="stat-val">Live</div><div class="stat-label">Multiplayer</div></div>
+  </div>
+</div>
+
+<!-- GAMES -->
+<section>
+  <div class="section-label">Games Library</div>
+  <div class="section-title">7 Games. Unlimited Rivalry.</div>
+  <div class="section-sub">Strategy games with countable outcomes — perfect for AI evaluation and wagering. Plus arcade and brain-training games.</div>
+  <div class="games-grid">
+    <a href="/games/arena.html?game=chess" class="game-card" style="--card-accent:rgba(201,168,76,.12)">
+      <div class="game-icon">♟</div>
+      <div class="game-name">Chess</div>
+      <div class="game-desc">Classic 8×8 strategy. Full rules, legal moves, checkmate detection.</div>
+      <div class="game-tags"><span class="tag tag-ai">AI</span><span class="tag tag-mp">Multiplayer</span><span class="tag tag-bet">Bettable</span></div>
+    </a>
+    <a href="/games/arena.html?game=checkers" class="game-card" style="--card-accent:rgba(201,168,76,.12)">
+      <div class="game-icon">⬤</div>
+      <div class="game-name">Checkers</div>
+      <div class="game-desc">8×8 draughts with multi-jump and king promotion.</div>
+      <div class="game-tags"><span class="tag tag-ai">AI</span><span class="tag tag-mp">Multiplayer</span><span class="tag tag-bet">Bettable</span></div>
+    </a>
+    <a href="/games/arena.html?game=reversi" class="game-card" style="--card-accent:rgba(16,185,129,.12)">
+      <div class="game-icon">◉</div>
+      <div class="game-name">Reversi</div>
+      <div class="game-desc">Flip opponent discs. Countable score makes it ideal for AI benchmarks.</div>
+      <div class="game-tags"><span class="tag tag-ai">AI</span><span class="tag tag-mp">Multiplayer</span><span class="tag tag-bet">Bettable</span></div>
+    </a>
+    <a href="/games/tictactoe.html" class="game-card" style="--card-accent:rgba(139,92,246,.12)">
+      <div class="game-icon">⬡</div>
+      <div class="game-name">Tic-Tac-Toe 10×10</div>
+      <div class="game-desc">Advanced 10×10 board, 5-in-a-row wins. Far more strategic than classic.</div>
+      <div class="game-tags"><span class="tag tag-ai">AI</span><span class="tag tag-mp">Multiplayer</span><span class="tag tag-bet">Bettable</span></div>
+    </a>
+    <a href="/games/snake.html" class="game-card" style="--card-accent:rgba(16,185,129,.1)">
+      <div class="game-icon">🐍</div>
+      <div class="game-name">Snake</div>
+      <div class="game-desc">Classic snake with smooth controls, high-score tracking.</div>
+      <div class="game-tags"><span class="tag tag-solo">Solo</span><span class="tag tag-ai">AI Race</span></div>
+    </a>
+    <a href="/games/math-raindrops.html" class="game-card" style="--card-accent:rgba(59,130,246,.1)">
+      <div class="game-icon">🔢</div>
+      <div class="game-name">Math Raindrops</div>
+      <div class="game-desc">Solve falling math problems before they hit the ground.</div>
+      <div class="game-tags"><span class="tag tag-solo">Solo</span><span class="tag tag-mp">Speed Match</span></div>
+    </a>
+    <a href="/games/battleship.html" class="game-card" style="--card-accent:rgba(239,68,68,.1)">
+      <div class="game-icon">🚢</div>
+      <div class="game-name">Battleship</div>
+      <div class="game-desc">Hidden fleet warfare on a 10×10 grid. Sink all ships to win.</div>
+      <div class="game-tags"><span class="tag tag-ai">AI</span><span class="tag tag-mp">Multiplayer</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section style="background:var(--panel);border-top:1px solid var(--border);border-bottom:1px solid var(--border);max-width:100%;padding:64px 24px">
+  <div style="max-width:1200px;margin:0 auto">
+    <div class="section-label">Platform Features</div>
+    <div class="section-title">More than just games.</div>
+    <div class="section-sub">A full gaming ecosystem built for the AI era.</div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon fi-ai">🤖</div>
+        <div class="feature-title">Bring Your Own AI</div>
+        <div class="feature-desc">Connect any OpenAI-compatible API — GPT-4, Claude, Gemini, Llama, custom endpoints. Provide API key, URL, model params, and system prompt. Fine-tune strategies per game.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-mp">👥</div>
+        <div class="feature-title">Real-Time Multiplayer</div>
+        <div class="feature-desc">Challenge other players in real-time via WebSocket rooms. Ranked and casual modes. Create private rooms with shareable links.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-bet">🎲</div>
+        <div class="feature-title">Spectate &amp; Bet</div>
+        <div class="feature-desc">Watch live games and wager GGX tokens on outcomes. Bet on Player A, Player B, or Draw before or during the game. Live odds update as the game progresses.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-ai">⚔</div>
+        <div class="feature-title">AI vs AI Battles</div>
+        <div class="feature-desc">Configure two AI models with different parameters and watch them battle across Chess, Checkers, and Reversi. Compare models, tournament brackets, leaderboards.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-pay">💳</div>
+        <div class="feature-title">Stripe Payments</div>
+        <div class="feature-desc">Purchase GGX tokens via Stripe. Use tokens to wager on games, unlock premium features, enter tournaments, and pay API fees for AI battles.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-bet">💎</div>
+        <div class="feature-title">GGX Token</div>
+        <div class="feature-desc">The native platform currency. Earn by winning, spend on bets and AI battles. Transparent on-platform balance. Future blockchain integration planned.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI ARENA PROMO -->
+<section>
+  <div class="ai-promo">
+    <div class="section-label" style="text-align:center">AI Arena</div>
+    <h2 style="font-size:clamp(24px,4vw,42px);color:#fff;font-weight:800;margin-bottom:12px">Battle of the Models</h2>
+    <p style="color:var(--muted);font-size:15px;max-width:520px;margin:0 auto;line-height:1.6">Configure two AI models with your own API keys. Choose a game. Watch them play move-by-move. Spectators bet on who wins. Rankings update in real time.</p>
+    <div class="ai-model-chips">
+      <div class="model-chip"><div class="model-dot" style="background:#8b5cf6"></div>GPT-4o</div>
+      <div style="color:var(--muted);font-size:18px;align-self:center">⚔</div>
+      <div class="model-chip"><div class="model-dot" style="background:#3b82f6"></div>Claude 3.5</div>
+    </div>
+    <div class="ai-model-chips" style="margin-top:0">
+      <div class="model-chip"><div class="model-dot" style="background:#10b981"></div>Gemini Pro</div>
+      <div style="color:var(--muted);font-size:18px;align-self:center">⚔</div>
+      <div class="model-chip"><div class="model-dot" style="background:#f59e0b"></div>Your Custom Model</div>
+    </div>
+    <a href="/ai-arena.html" class="btn btn-accent" style="margin-top:24px;font-size:15px;padding:12px 32px">⚔ Open AI Arena</a>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section style="background:var(--panel);border-top:1px solid var(--border);border-bottom:1px solid var(--border);max-width:100%;padding:64px 24px">
+  <div style="max-width:1200px;margin:0 auto">
+    <div class="section-label">How It Works</div>
+    <div class="section-title">Four ways to play.</div>
+    <div class="steps" style="margin-top:32px">
+      <div class="step">
+        <div class="step-title">Solo vs AI</div>
+        <div class="step-desc">Choose a game, select an AI difficulty or bring your own model via API key, and play immediately. No account needed for casual play.</div>
+      </div>
+      <div class="step">
+        <div class="step-title">Human vs Human</div>
+        <div class="step-desc">Create a room or join one. Share the link with your opponent. Real-time turns via WebSocket. Optional GGX wager on the match.</div>
+      </div>
+      <div class="step">
+        <div class="step-title">AI vs AI</div>
+        <div class="step-desc">Configure both model endpoints with your own API keys. Set move delay, temperature, system prompt. Spectators join and bet live.</div>
+      </div>
+      <div class="step">
+        <div class="step-title">Spectate &amp; Bet</div>
+        <div class="step-desc">Browse live games. Place a GGX wager on Model A, Model B, or Draw before or during gameplay. Funds distributed instantly on resolution.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOKEN -->
+<section>
+  <div class="token-section">
+    <div>
+      <div class="section-label">GGX Token</div>
+      <h2 style="font-size:clamp(22px,3.5vw,36px);color:#fff;font-weight:700;margin-bottom:12px">The currency of GoGames.XYZ</h2>
+      <p style="color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:24px">GGX powers the platform economy — from wagering on game outcomes to paying for AI model API usage. Buy with Stripe or earn by playing and winning.</p>
+      <ul class="token-list">
+        <li>Wager on live game outcomes (win up to 2× your bet)</li>
+        <li>Pay for AI battle API calls (per-move micro-charges)</li>
+        <li>Enter ranked tournaments with prize pools</li>
+        <li>Premium room creation and private spectator links</li>
+        <li>Buy via Stripe (USD / EUR / GBP)</li>
+        <li>Earn by winning games and correct bets</li>
+      </ul>
+      <div style="display:flex;gap:12px;margin-top:28px;flex-wrap:wrap">
+        <a href="/pay.html" class="btn btn-accent">💳 Buy GGX Tokens</a>
+        <a href="/pay.html#earn" class="btn btn-outline">📈 How to Earn</a>
+      </div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-size:88px;line-height:1;filter:drop-shadow(0 0 30px rgba(59,130,246,.4))">💎</div>
+      <div style="font-size:36px;font-weight:800;color:var(--gold);margin-top:12px">GGX</div>
+      <div style="font-size:12px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">GoGames Token</div>
+      <div style="margin-top:24px;display:flex;flex-direction:column;gap:8px">
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 20px;display:flex;justify-content:space-between;font-size:13px">
+          <span style="color:var(--muted)">100 GGX</span>
+          <span style="color:var(--text)">$5.00 USD</span>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 20px;display:flex;justify-content:space-between;font-size:13px">
+          <span style="color:var(--muted)">500 GGX</span>
+          <span style="color:var(--text)">$20.00 USD</span>
+        </div>
+        <div style="background:var(--panel);border:1px solid rgba(201,168,76,.3);border-radius:10px;padding:12px 20px;display:flex;justify-content:space-between;font-size:13px">
+          <span style="color:var(--gold)">2000 GGX 🔥</span>
+          <span style="color:var(--text)">$60.00 USD</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div style="max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:center">
+    <div>
+      <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:4px">GoGames<span style="color:#fff;font-weight:300">.XYZ</span></div>
+      <div>Play · Watch · Bet · Battle AI</div>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <a href="/games/arena.html">Board Games</a>
+      <a href="/ai-arena.html">AI Arena</a>
+      <a href="/pay.html">GGX Tokens</a>
+      <a href="https://github.com/george-shepov/gogames.xyz">GitHub</a>
+    </div>
+    <div>© 2025 GoGames.XYZ — All rights reserved</div>
+  </div>
+</footer>
+
+</body>
+</html>

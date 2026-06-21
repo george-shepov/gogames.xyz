@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GGX Tokens — GoGames.XYZ</title>
+<meta name="description" content="Buy GGX tokens to wager on AI battles, enter tournaments, and pay for API usage on GoGames.XYZ">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090a;--panel:#0e1114;--border:#1a2030;
+  --gold:#c9a84c;--gold2:#e8c86a;--text:#d0c8b8;--muted:#4a5568;
+  --accent:#3b82f6;--green:#10b981;--purple:#8b5cf6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+nav{position:sticky;top:0;z-index:100;background:rgba(8,9,10,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:16px;height:52px}
+.nav-logo{font-size:16px;font-weight:800;color:var(--gold);text-decoration:none}
+.nav-logo span{color:#fff;font-weight:300}
+.nav-links a{color:var(--muted);text-decoration:none;padding:5px 12px;border-radius:6px;font-size:12px;white-space:nowrap}
+.nav-links a:hover{color:var(--gold)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;border:none;transition:all .2s}
+.btn-primary{background:var(--gold);color:#08090a}.btn-primary:hover{background:var(--gold2)}
+.btn-accent{background:var(--accent);color:#fff}.btn-accent:hover{background:#2563eb}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+main{max-width:1100px;margin:0 auto;padding:40px 20px}
+
+/* HERO */
+.hero{text-align:center;padding:40px 0 48px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:var(--gold);padding:5px 16px;border-radius:99px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:20px}
+h1{font-size:clamp(28px,5vw,52px);font-weight:800;color:#fff;margin-bottom:12px}
+.sub{font-size:15px;color:var(--muted);max-width:520px;margin:0 auto;line-height:1.6}
+
+/* PRICING CARDS */
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:48px}
+.price-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:28px 24px;text-align:center;transition:all .25s;position:relative}
+.price-card.featured{border-color:var(--gold);background:linear-gradient(180deg,rgba(201,168,76,.06),var(--panel))}
+.price-card:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.price-badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--gold);color:#08090a;font-size:10px;font-weight:800;padding:3px 12px;border-radius:99px;letter-spacing:.08em;white-space:nowrap}
+.price-ggx{font-size:36px;font-weight:800;color:var(--gold);margin-bottom:4px}
+.price-usd{font-size:14px;color:var(--muted);margin-bottom:16px}
+.price-perk{font-size:12px;color:var(--text);margin-bottom:8px;line-height:1.5}
+.price-btn{width:100%;padding:10px;background:var(--accent);border:none;color:#fff;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .2s;margin-top:12px}
+.price-btn:hover{background:#2563eb}
+.price-btn.gold{background:var(--gold);color:#08090a}.price-btn.gold:hover{background:var(--gold2)}
+
+/* STRIPE FORM */
+.checkout-section{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:48px}
+.section-title{font-size:13px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:20px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.form-input{background:#0a0d0a;border:1px solid #1e2e1e;color:#d0c8b8;font-family:inherit;font-size:13px;padding:10px 12px;border-radius:8px;outline:none;width:100%}
+.form-input:focus{border-color:var(--accent)}
+.form-input::placeholder{color:#3a4a3a}
+#card-element{background:#0a0d0a;border:1px solid #1e2e1e;padding:12px;border-radius:8px;transition:border-color .2s}
+#card-element.focused{border-color:var(--accent)}
+.order-summary{background:#0a0d0a;border:1px solid var(--border);border-radius:10px;padding:16px;margin:16px 0}
+.order-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+.order-row.total{font-weight:700;color:#fff;border-top:1px solid var(--border);margin-top:8px;padding-top:12px;font-size:15px}
+.pay-btn{width:100%;padding:14px;background:var(--accent);border:none;color:#fff;border-radius:10px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px}
+.pay-btn:hover{background:#2563eb}
+.pay-btn:disabled{opacity:.6;cursor:not-allowed}
+#payment-message{font-size:13px;text-align:center;min-height:20px;margin-top:8px}
+.secure-badges{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.secure-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+
+/* EARN SECTION */
+.earn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:48px}
+.earn-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px}
+.earn-icon{font-size:28px;margin-bottom:10px}
+.earn-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:6px}
+.earn-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.earn-reward{display:inline-flex;align-items:center;gap:4px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);color:var(--gold);font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;margin-top:8px}
+
+/* FAQ */
+.faq-list{display:flex;flex-direction:column;gap:12px;margin-bottom:48px}
+.faq-item{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.faq-q{padding:16px 20px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.faq-q:after{content:'▼';font-size:10px;color:var(--muted);transition:transform .2s}
+.faq-item.open .faq-q:after{transform:rotate(180deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease;padding:0 20px;font-size:13px;color:var(--muted);line-height:1.6}
+.faq-item.open .faq-a{max-height:200px;padding:0 20px 16px}
+
+/* TABS */
+.tabs{display:flex;gap:2px;background:#0a0d0a;border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:24px;width:fit-content}
+.tab{padding:7px 20px;border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:13px;text-transform:uppercase;letter-spacing:.08em;border-radius:6px;cursor:pointer;transition:all .2s}
+.tab.active{background:var(--border);color:var(--gold)}
+</style>
+<!-- Stripe.js (loaded from Stripe CDN) -->
+<script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">GoGames<span>.XYZ</span></a>
+  <div class="nav-links" style="display:flex;gap:2px">
+    <a href="/games/arena.html">♟ Games</a>
+    <a href="/ai-arena.html">⚔ AI Arena</a>
+    <a href="/pay.html" style="color:var(--gold)">💎 Tokens</a>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <span style="font-size:12px;color:var(--gold);background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);padding:4px 12px;border-radius:99px">💎 <span id="ggx-bal">100</span> GGX</span>
+  </div>
+</nav>
+
+<main>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">💎 GGX Token</div>
+    <h1>Power Your <span style="color:var(--gold)">GoGames</span> Experience</h1>
+    <p class="sub">Buy GGX tokens to wager on AI battles, enter tournaments, and pay for API usage. Earn by winning.</p>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" id="tab-buy" onclick="showSection('buy')">💳 Buy GGX</button>
+    <button class="tab" id="tab-earn" onclick="showSection('earn')">📈 Earn GGX</button>
+    <button class="tab" id="tab-faq" onclick="showSection('faq')">❓ FAQ</button>
+  </div>
+
+  <!-- BUY SECTION -->
+  <div id="sec-buy">
+    <!-- PRICING -->
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-ggx">100 <span style="font-size:18px">GGX</span></div>
+        <div class="price-usd">$5.00 USD</div>
+        <div class="price-perk">Perfect for trying the platform. Good for ~10 bets or a few AI battles.</div>
+        <button class="price-btn" onclick="selectPlan(100, 5.00)">Select</button>
+      </div>
+      <div class="price-card">
+        <div class="price-ggx">500 <span style="font-size:18px">GGX</span></div>
+        <div class="price-usd">$20.00 USD</div>
+        <div class="price-perk">Great value. Enter tournaments, run extended AI battles.</div>
+        <button class="price-btn" onclick="selectPlan(500, 20.00)">Select</button>
+      </div>
+      <div class="price-card featured">
+        <div class="price-badge">🔥 Best Value</div>
+        <div class="price-ggx">2000 <span style="font-size:18px">GGX</span></div>
+        <div class="price-usd">$60.00 USD</div>
+        <div class="price-perk">Power user bundle. Serious betting, AI tournaments, and full arena access.</div>
+        <button class="price-btn gold" onclick="selectPlan(2000, 60.00)">Select</button>
+      </div>
+      <div class="price-card">
+        <div class="price-ggx">5000 <span style="font-size:18px">GGX</span></div>
+        <div class="price-usd">$120.00 USD</div>
+        <div class="price-perk">Professional tier. High-stakes wagering, unlimited AI battles, priority support.</div>
+        <button class="price-btn" onclick="selectPlan(5000, 120.00)">Select</button>
+      </div>
+    </div>
+
+    <!-- CHECKOUT -->
+    <div class="checkout-section">
+      <div class="section-title">💳 Checkout — Powered by Stripe</div>
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="email" type="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Card Details</label>
+          <div id="card-element">
+            <!-- Stripe Card Element will mount here -->
+            <div style="color:#3a4a3a;font-size:13px;padding:4px 0">
+              🔒 Card details entered here are handled securely by Stripe — GoGames.XYZ never sees your card number.
+            </div>
+          </div>
+          <div id="card-errors" style="color:#ef4444;font-size:12px;margin-top:4px"></div>
+        </div>
+      </div>
+
+      <div class="order-summary">
+        <div class="order-row">
+          <span>Package</span>
+          <span id="order-pkg">100 GGX</span>
+        </div>
+        <div class="order-row">
+          <span style="color:var(--muted)">Processing fee (Stripe)</span>
+          <span id="order-fee" style="color:var(--muted)">$0.15</span>
+        </div>
+        <div class="order-row total">
+          <span>Total</span>
+          <span id="order-total">$5.15</span>
+        </div>
+      </div>
+
+      <button class="pay-btn" id="pay-btn" onclick="submitPayment()">
+        🔒 Pay with Stripe
+      </button>
+      <div id="payment-message"></div>
+
+      <div class="secure-badges">
+        <span class="secure-badge">🔒 SSL Encrypted</span>
+        <span class="secure-badge">✅ Stripe Verified</span>
+        <span class="secure-badge">💳 All Major Cards</span>
+        <span class="secure-badge">🛡 PCI Compliant</span>
+      </div>
+    </div>
+  </div><!-- /buy section -->
+
+  <!-- EARN SECTION -->
+  <div id="sec-earn" style="display:none">
+    <div class="earn-grid">
+      <div class="earn-card">
+        <div class="earn-icon">🏆</div>
+        <div class="earn-title">Win Games</div>
+        <div class="earn-desc">Beat other humans or AI opponents in ranked matches. Score is tallied at end of each game.</div>
+        <div class="earn-reward">+5 GGX per win</div>
+      </div>
+      <div class="earn-card">
+        <div class="earn-icon">🎲</div>
+        <div class="earn-title">Correct Bets</div>
+        <div class="earn-desc">Place spectator bets on live AI battles. Win up to 8× your stake on a correct Draw prediction.</div>
+        <div class="earn-reward">Up to 8× stake</div>
+      </div>
+      <div class="earn-card">
+        <div class="earn-icon">🏅</div>
+        <div class="earn-title">Tournaments</div>
+        <div class="earn-desc">Enter monthly Chess, Checkers, and Reversi tournaments. Prize pools funded by entry fees.</div>
+        <div class="earn-reward">Up to 500 GGX</div>
+      </div>
+      <div class="earn-card">
+        <div class="earn-icon">🤖</div>
+        <div class="earn-title">Host AI Battles</div>
+        <div class="earn-desc">Publish an AI vs AI battle with a public betting pool. Earn 5% of all bets placed on your battle.</div>
+        <div class="earn-reward">5% host fee</div>
+      </div>
+      <div class="earn-card">
+        <div class="earn-icon">👥</div>
+        <div class="earn-title">Referrals</div>
+        <div class="earn-desc">Invite friends. Earn GGX when they make their first purchase.</div>
+        <div class="earn-reward">+50 GGX per referral</div>
+      </div>
+      <div class="earn-card">
+        <div class="earn-icon">📅</div>
+        <div class="earn-title">Daily Login</div>
+        <div class="earn-desc">Log in every day to claim a small GGX drip. Streak bonuses multiply the reward.</div>
+        <div class="earn-reward">+2–20 GGX/day</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ SECTION -->
+  <div id="sec-faq" style="display:none">
+    <div class="faq-list">
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">What is GGX?</div>
+        <div class="faq-a">GGX is the native utility token of GoGames.XYZ. It is used for wagering on game outcomes, paying for AI API call fees during AI battles, entering paid tournaments, and purchasing premium features. GGX is an on-platform currency — it has no external blockchain or exchange listing at this time.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">How are payments processed?</div>
+        <div class="faq-a">All payments are processed by Stripe — a PCI Level 1 certified payment processor. GoGames.XYZ never stores your card details. Stripe handles all card data in an encrypted, compliant environment. We accept Visa, Mastercard, American Express, and most major debit cards.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Can I withdraw GGX back to cash?</div>
+        <div class="faq-a">GGX is currently a non-withdrawable platform currency — it can only be spent on GoGames.XYZ. Future updates may introduce a redemption program for high-balance accounts. All purchases are final unless there is a technical error on our side.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">How do AI battle fees work?</div>
+        <div class="faq-a">When you run an AI battle using your own API keys, there is no per-move fee charged by GoGames.XYZ — you pay your AI provider directly (OpenAI, Anthropic, etc.). GGX is used for the optional wagering/betting layer on top of the battle. A small GGX fee may be charged for hosting public battles in the future.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">What happens if a bet cannot be resolved?</div>
+        <div class="faq-a">If a game ends without a clear outcome (network error, server restart, game abandonment), all bets are refunded in full. Partial game scenarios (where one player disconnects after move 5+) may result in a draw resolution at the platform's discretion. We always err on the side of refund.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Are there GGX transaction fees?</div>
+        <div class="faq-a">There is no fee for spending GGX within the platform. Stripe charges a processing fee of approximately 2.9% + $0.30 per purchase, which is reflected at checkout. There are no withdrawal fees since GGX is non-withdrawable at this time.</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer style="border-top:1px solid var(--border);padding:24px;text-align:center;color:var(--muted);font-size:12px;margin-top:40px">
+  <a href="/" style="color:var(--gold);font-weight:700;text-decoration:none">GoGames.XYZ</a> —
+  <a href="/games/arena.html" style="color:var(--muted);text-decoration:none">Play Games</a> ·
+  <a href="/ai-arena.html" style="color:var(--muted);text-decoration:none">AI Arena</a> ·
+  <a href="https://github.com/george-shepov/gogames.xyz" style="color:var(--muted);text-decoration:none">GitHub</a>
+  <br><br>Payments powered by <a href="https://stripe.com" style="color:var(--muted)">Stripe</a>. GGX is a platform utility token with no external monetary value.
+</footer>
+
+<script>
+// ── CONFIG ──
+// Replace with your actual Stripe publishable key (set via environment or server-rendered template)
+const STRIPE_PUBLISHABLE_KEY = window.__STRIPE_PK__ || 'pk_test_placeholder';
+let stripe, cardElement;
+let selectedGgx = 100;
+let selectedUsd = 5.00;
+
+// Init Stripe
+try {
+  if (typeof Stripe !== 'undefined' && STRIPE_PUBLISHABLE_KEY !== 'pk_test_placeholder') {
+    stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+    const elements = stripe.elements();
+    cardElement = elements.create('card', {
+      style: {
+        base: { color: '#d0c8b8', fontFamily: "'Segoe UI', system-ui, sans-serif", fontSize: '14px', '::placeholder': {color: '#4a5568'} },
+        invalid: { color: '#ef4444' }
+      },
+      hidePostalCode: true
+    });
+    cardElement.mount('#card-element');
+    cardElement.addEventListener('change', ({error}) => {
+      document.getElementById('card-errors').textContent = error ? error.message : '';
+    });
+  } else {
+    document.getElementById('card-element').innerHTML = '<div style="font-size:12px;color:#c9a84c;padding:8px 0">⚠ Stripe not configured. Set <code>STRIPE_PUBLISHABLE_KEY</code> on the server. See <a href="https://github.com/george-shepov/gogames.xyz" style="color:#c9a84c">setup guide</a>.</div>';
+  }
+} catch(e) {
+  console.warn('Stripe init failed:', e);
+}
+
+// ── SELECT PLAN ──
+function selectPlan(ggx, usd) {
+  selectedGgx = ggx;
+  selectedUsd = usd;
+  const fee = (usd * 0.029 + 0.30).toFixed(2);
+  const total = (usd + parseFloat(fee)).toFixed(2);
+  document.getElementById('order-pkg').textContent = ggx + ' GGX';
+  document.getElementById('order-fee').textContent = '$' + fee;
+  document.getElementById('order-total').textContent = '$' + total;
+  // Scroll to checkout
+  document.querySelector('.checkout-section').scrollIntoView({behavior:'smooth'});
+}
+
+// ── SUBMIT PAYMENT ──
+async function submitPayment() {
+  const btn = document.getElementById('pay-btn');
+  const msg = document.getElementById('payment-message');
+  const email = document.getElementById('email').value.trim();
+  if (!email || !email.includes('@')) { msg.textContent = '⚠ Enter a valid email'; msg.style.color = '#ef4444'; return; }
+
+  if (!stripe || !cardElement) {
+    // Demo mode — show what would happen
+    btn.disabled = true;
+    msg.textContent = '🔄 Processing payment…';
+    msg.style.color = '#c9a84c';
+    await new Promise(r => setTimeout(r, 1500));
+    msg.textContent = `✅ Demo: ${selectedGgx} GGX would be added to your account. Configure Stripe keys to enable real payments.`;
+    msg.style.color = '#10b981';
+    document.getElementById('ggx-bal').textContent = (parseInt(document.getElementById('ggx-bal').textContent)||0) + selectedGgx;
+    btn.disabled = false;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '🔄 Processing…';
+  msg.textContent = '';
+
+  try {
+    // 1. Create payment intent on server
+    const intentRes = await fetch('/api/create-payment-intent', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ggx: selectedGgx, usd: selectedUsd, email})
+    });
+    if (!intentRes.ok) throw new Error('Server error: ' + intentRes.status);
+    const {clientSecret} = await intentRes.json();
+
+    // 2. Confirm card payment with Stripe
+    const {error, paymentIntent} = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {card: cardElement, billing_details: {email}}
+    });
+
+    if (error) {
+      msg.textContent = '❌ ' + error.message;
+      msg.style.color = '#ef4444';
+    } else if (paymentIntent.status === 'succeeded') {
+      msg.textContent = `✅ Payment successful! ${selectedGgx} GGX added to your account.`;
+      msg.style.color = '#10b981';
+      document.getElementById('ggx-bal').textContent = (parseInt(document.getElementById('ggx-bal').textContent)||0) + selectedGgx;
+    }
+  } catch(err) {
+    msg.textContent = '❌ ' + err.message;
+    msg.style.color = '#ef4444';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔒 Pay with Stripe';
+}
+
+// ── TABS ──
+function showSection(s) {
+  ['buy','earn','faq'].forEach(id => {
+    document.getElementById('tab-'+id).className = 'tab' + (id===s?' active':'');
+    document.getElementById('sec-'+id).style.display = id===s ? 'block' : 'none';
+  });
+}
+
+// ── FAQ TOGGLE ──
+function toggleFaq(el) { el.classList.toggle('open'); }
+
+// Handle hash navigation
+if (location.hash === '#earn') showSection('earn');
+if (location.hash === '#faq') showSection('faq');
+</script>
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Arena — GoGames.XYZ</title>
+<meta name="description" content="Battle AI models in Chess, Checkers, Reversi. Bring your own model via API key. Spectate and bet on outcomes.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090a;--panel:#0e1114;--border:#1a2030;
+  --gold:#c9a84c;--gold2:#e8c86a;--text:#d0c8b8;--muted:#4a5568;
+  --accent:#3b82f6;--green:#10b981;--purple:#8b5cf6;--red:#ef4444;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+nav{position:sticky;top:0;z-index:100;background:rgba(8,9,10,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:16px;height:52px}
+.nav-logo{font-size:16px;font-weight:800;color:var(--gold);text-decoration:none}
+.nav-logo span{color:#fff;font-weight:300}
+.nav-links{display:flex;gap:2px;overflow-x:auto}
+.nav-links a{color:var(--muted);text-decoration:none;padding:5px 12px;border-radius:6px;font-size:12px;white-space:nowrap;transition:color .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--gold)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;border:none;transition:all .2s}
+.btn-primary{background:var(--gold);color:#08090a}.btn-primary:hover{background:var(--gold2)}
+.btn-accent{background:var(--accent);color:#fff}.btn-accent:hover{background:#2563eb}
+.btn-purple{background:var(--purple);color:#fff}.btn-purple:hover{background:#7c3aed}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.btn-red{background:var(--red);color:#fff}
+
+/* MAIN LAYOUT */
+.main{max-width:1300px;margin:0 auto;padding:24px 20px;display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+
+/* PANEL */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px}
+.panel-title{font-size:11px;letter-spacing:.15em;text-transform:uppercase;font-weight:700;margin-bottom:16px}
+
+/* FORM FIELDS */
+label{font-size:10px;color:var(--muted);letter-spacing:.06em;display:block;margin-bottom:3px;margin-top:10px}
+label:first-child{margin-top:0}
+input,select,textarea{width:100%;background:#0a0d0a;border:1px solid #1e2e1e;color:#b0a080;font-family:inherit;font-size:12px;padding:7px 10px;border-radius:6px;outline:none;box-sizing:border-box}
+input:focus,select:focus,textarea:focus{border-color:#3a5a3a}
+input::placeholder,textarea::placeholder{color:#3a4a3a}
+textarea{resize:vertical;min-height:48px}
+select option{background:#0e1114}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* MODEL CARD */
+.model-card{border-radius:12px;padding:16px;border:1px solid}
+.model-a{background:rgba(139,92,246,.06);border-color:rgba(139,92,246,.25)}
+.model-b{background:rgba(59,130,246,.06);border-color:rgba(59,130,246,.25)}
+.model-tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.tag-a{color:var(--purple)}.tag-b{color:var(--accent)}
+
+/* BATTLE STATUS */
+.battle-status{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:16px;min-height:120px}
+.move-log{background:#080a08;border:1px solid var(--border);border-radius:8px;padding:10px;max-height:220px;overflow-y:auto;font-size:11px;font-family:'Courier New',monospace;color:#6a8a6a}
+.move-entry{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.move-entry.a{color:#a78bfa}.move-entry.b{color:#93c5fd}.move-entry.system{color:#c9a84c}
+
+/* SCOREBOARD */
+.scoreboard{display:flex;gap:12px;margin:12px 0}
+.score-box{flex:1;text-align:center;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px 8px}
+.score-name{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.score-val{font-size:24px;font-weight:800;color:#fff}
+.score-vs{font-size:16px;color:var(--muted);align-self:center;text-align:center}
+
+/* SPECTATE SECTION */
+.live-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.live-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .2s}
+.live-row:hover{border-color:var(--gold)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.live-info{flex:1;min-width:0}
+.live-title{font-size:13px;color:#fff;font-weight:600}
+.live-meta{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* BET SECTION */
+.bet-grid{display:flex;gap:8px;margin:10px 0}
+.bet-btn{flex:1;padding:10px 8px;border-radius:8px;border:1px solid;background:transparent;color:inherit;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s}
+.bet-a{border-color:rgba(139,92,246,.4);color:#a78bfa}.bet-a:hover,.bet-a.sel{background:rgba(139,92,246,.2);border-color:var(--purple)}
+.bet-draw{border-color:rgba(74,85,104,.4);color:#9ca3af}.bet-draw:hover,.bet-draw.sel{background:rgba(74,85,104,.2);border-color:#6b7280}
+.bet-b{border-color:rgba(59,130,246,.4);color:#93c5fd}.bet-b:hover,.bet-b.sel{background:rgba(59,130,246,.2);border-color:var(--accent)}
+.odds-row{display:flex;gap:8px;margin:8px 0}
+.odds-chip{flex:1;text-align:center;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:8px}
+.odds-v{font-size:16px;font-weight:800;color:var(--gold)}
+.odds-l{font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+
+/* GAME PREVIEW */
+#game-embed{width:100%;min-height:500px;border:none;border-radius:12px;background:#080a08}
+.game-select-btns{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.game-sel-btn{flex:1;min-width:80px;padding:8px 12px;background:var(--panel);border:1px solid var(--border);color:var(--muted);font-family:inherit;font-size:12px;border-radius:8px;cursor:pointer;text-align:center;transition:all .2s}
+.game-sel-btn.active,.game-sel-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* TABS */
+.tabs{display:flex;gap:2px;background:#0a0d0a;border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:16px}
+.tab{flex:1;padding:7px 12px;border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:12px;text-transform:uppercase;letter-spacing:.08em;border-radius:6px;cursor:pointer;transition:all .2s;text-align:center}
+.tab.active{background:var(--border);color:var(--gold)}
+.tab:hover:not(.active){color:var(--text)}
+
+/* MODEL LEADERBOARD */
+.lb-row{display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+.lb-rank{font-size:13px;font-weight:800;color:var(--gold);width:24px;text-align:center}
+.lb-name{flex:1;font-size:13px;color:#fff;font-weight:600}
+.lb-wins{font-size:12px;color:var(--green);text-align:right}
+.lb-losses{font-size:12px;color:var(--red);text-align:right}
+.lb-draws{font-size:12px;color:var(--muted);text-align:right}
+
+@media(max-width:600px){
+  .main{padding:12px}
+  .row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">GoGames<span>.XYZ</span></a>
+  <div class="nav-links">
+    <a href="/games/arena.html">♟ Board Games</a>
+    <a href="/ai-arena.html" class="active">⚔ AI Arena</a>
+    <a href="/pay.html">💎 Tokens</a>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <span style="font-size:12px;color:var(--gold);background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);padding:4px 12px;border-radius:99px">💎 <span id="ggx-bal">100</span> GGX</span>
+    <a href="/pay.html" class="btn btn-primary" style="padding:6px 16px;font-size:12px">Buy GGX</a>
+  </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<div style="text-align:center;padding:40px 20px 24px;background:linear-gradient(180deg,rgba(139,92,246,.06),transparent)">
+  <div style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--purple);margin-bottom:10px">⚔ AI Battle Arena</div>
+  <h1 style="font-size:clamp(26px,5vw,52px);font-weight:800;color:#fff;margin-bottom:10px">Bring Your Own Model</h1>
+  <p style="font-size:14px;color:var(--muted);max-width:520px;margin:0 auto;line-height:1.6">Configure two AI models using your API keys, watch them battle in Chess, Checkers or Reversi live, and let spectators bet on the outcome.</p>
+</div>
+
+<div class="main">
+
+  <!-- LEFT: CONFIG + SPECTATE -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" id="tab-config" onclick="showTab('config')">⚙ Configure</button>
+      <button class="tab" id="tab-spectate" onclick="showTab('spectate')">👁 Spectate</button>
+      <button class="tab" id="tab-leaderboard" onclick="showTab('leaderboard')">🏆 Rankings</button>
+    </div>
+
+    <!-- CONFIG TAB -->
+    <div id="pane-config">
+      <!-- Game Select -->
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-title" style="color:var(--gold)">🎮 Select Game</div>
+        <div class="game-select-btns">
+          <button class="game-sel-btn active" id="gsb-chess" onclick="selectGame('chess')">♟ Chess</button>
+          <button class="game-sel-btn" id="gsb-checkers" onclick="selectGame('checkers')">⬤ Checkers</button>
+          <button class="game-sel-btn" id="gsb-reversi" onclick="selectGame('reversi')">◉ Reversi</button>
+          <button class="game-sel-btn" id="gsb-tictactoe" onclick="selectGame('tictactoe')">⬡ 10×10 TTT</button>
+        </div>
+      </div>
+
+      <!-- Model A -->
+      <div class="panel model-card model-a" style="margin-bottom:16px">
+        <div class="panel-title tag-a">⚔ Model A — White / First Player</div>
+        <label>Display Name</label>
+        <input id="a-name" value="GPT-4o" placeholder="GPT-4o, My Bot…">
+        <label>API Base URL</label>
+        <input id="a-url" value="https://api.openai.com/v1" placeholder="https://api.openai.com/v1">
+        <label>API Key</label>
+        <input id="a-key" type="password" placeholder="sk-…">
+        <label>Model ID</label>
+        <input id="a-model" value="gpt-4o" placeholder="gpt-4o, claude-3-5-sonnet…">
+        <div class="row">
+          <div><label>Temperature</label><input id="a-temp" type="number" value="0.3" min="0" max="2" step="0.1"></div>
+          <div><label>Max Tokens</label><input id="a-maxtok" type="number" value="128"></div>
+        </div>
+        <label>System Prompt (optional)</label>
+        <textarea id="a-sys" placeholder="You are a grandmaster-level chess AI. Respond with the best move only in format: e2e4"></textarea>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <button onclick="testModel('a')" class="btn btn-outline" style="font-size:11px;padding:5px 14px">🔌 Test Connection</button>
+          <span id="a-test-result" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <!-- Model B -->
+      <div class="panel model-card model-b" style="margin-bottom:16px">
+        <div class="panel-title tag-b">⚔ Model B — Black / Second Player</div>
+        <label>Display Name</label>
+        <input id="b-name" value="Claude-3.5" placeholder="Claude, Gemini, My Bot…">
+        <label>API Base URL</label>
+        <input id="b-url" value="https://api.openai.com/v1" placeholder="https://api.anthropic.com/v1">
+        <label>API Key</label>
+        <input id="b-key" type="password" placeholder="sk-…">
+        <label>Model ID</label>
+        <input id="b-model" value="gpt-4o-mini" placeholder="claude-3-5-sonnet-20241022…">
+        <div class="row">
+          <div><label>Temperature</label><input id="b-temp" type="number" value="0.3" min="0" max="2" step="0.1"></div>
+          <div><label>Max Tokens</label><input id="b-maxtok" type="number" value="128"></div>
+        </div>
+        <label>System Prompt (optional)</label>
+        <textarea id="b-sys" placeholder="You are a strategic board game AI. Make the best move and respond with only the move notation."></textarea>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <button onclick="testModel('b')" class="btn btn-outline" style="font-size:11px;padding:5px 14px">🔌 Test Connection</button>
+          <span id="b-test-result" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <!-- Battle settings -->
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-title" style="color:var(--muted)">⚙ Battle Settings</div>
+        <div class="row">
+          <div><label>Move Delay (ms)</label><input id="move-delay" type="number" value="1500" min="300" max="15000"></div>
+          <div><label>Max Moves</label><input id="max-moves" type="number" value="200" min="10" max="500"></div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div>
+            <label>Allow Spectator Bets</label>
+            <select id="allow-bets"><option value="yes">Yes — open for bets</option><option value="no">No — private battle</option></select>
+          </div>
+          <div>
+            <label>Starting GGX Pool</label>
+            <input id="bet-pool" type="number" value="0" placeholder="0 = free">
+          </div>
+        </div>
+      </div>
+
+      <button id="start-btn" onclick="startBattle()" class="btn btn-purple" style="width:100%;font-size:15px;padding:12px;justify-content:center">⚔ Start AI Battle</button>
+    </div><!-- /pane-config -->
+
+    <!-- SPECTATE TAB -->
+    <div id="pane-spectate" style="display:none">
+      <div class="panel">
+        <div class="panel-title" style="color:var(--red)">🔴 Live Battles</div>
+        <div class="live-list" id="live-list">
+          <div class="live-row" onclick="joinSpectate('demo-gpt-claude')">
+            <div class="live-dot"></div>
+            <div class="live-info">
+              <div class="live-title">GPT-4o vs Claude-3.5-Sonnet</div>
+              <div class="live-meta">Chess · Move 23 · 14 spectators · Pool: 120 GGX</div>
+            </div>
+          </div>
+          <div class="live-row" onclick="joinSpectate('demo-llama-mistral')">
+            <div class="live-dot"></div>
+            <div class="live-info">
+              <div class="live-title">Llama-3.1-70B vs Mistral-7B</div>
+              <div class="live-meta">Checkers · Move 8 · 6 spectators · Pool: 45 GGX</div>
+            </div>
+          </div>
+          <div class="live-row" onclick="joinSpectate('demo-gemini-gpt')">
+            <div class="live-dot"></div>
+            <div class="live-info">
+              <div class="live-title">Gemini-Pro vs GPT-4o-mini</div>
+              <div class="live-meta">Reversi · Move 31 · 22 spectators · Pool: 380 GGX</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="spectate-game-panel" style="display:none">
+          <div class="divider"></div>
+          <div id="spectate-title" style="font-size:14px;color:#fff;font-weight:700;margin-bottom:12px"></div>
+
+          <div class="scoreboard">
+            <div class="score-box">
+              <div class="score-name" id="spec-name-a">Model A</div>
+              <div class="score-val" id="spec-score-a">—</div>
+            </div>
+            <div class="score-vs">VS</div>
+            <div class="score-box">
+              <div class="score-name" id="spec-name-b">Model B</div>
+              <div class="score-val" id="spec-score-b">—</div>
+            </div>
+          </div>
+
+          <div style="font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--purple);font-weight:700;margin-bottom:8px">💎 Place Your Bet</div>
+          <div class="bet-grid">
+            <button class="bet-btn bet-a" id="spec-bet-a" onclick="selectSpecBet('a')">⚔ Model A</button>
+            <button class="bet-btn bet-draw" id="spec-bet-draw" onclick="selectSpecBet('draw')">⇌ Draw</button>
+            <button class="bet-btn bet-b" id="spec-bet-b" onclick="selectSpecBet('b')">⚔ Model B</button>
+          </div>
+          <div class="odds-row">
+            <div class="odds-chip"><div class="odds-v" id="odds-a">1.85×</div><div class="odds-l">Model A</div></div>
+            <div class="odds-chip"><div class="odds-v" id="odds-draw">8.0×</div><div class="odds-l">Draw</div></div>
+            <div class="odds-chip"><div class="odds-v" id="odds-b">2.10×</div><div class="odds-l">Model B</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin:10px 0">
+            <span style="font-size:12px;color:var(--muted)">GGX Wager:</span>
+            <input id="spec-wager" type="number" value="10" min="1" style="width:80px">
+            <span style="font-size:11px;color:var(--gold)">Balance: <span id="spec-bal">100</span></span>
+          </div>
+          <button onclick="placeSpecBet()" class="btn btn-purple" style="width:100%;justify-content:center">💎 Place Bet</button>
+          <div id="spec-bet-msg" style="margin-top:8px;font-size:12px;text-align:center;color:var(--muted)"></div>
+        </div>
+      </div>
+    </div><!-- /pane-spectate -->
+
+    <!-- LEADERBOARD TAB -->
+    <div id="pane-leaderboard" style="display:none">
+      <div class="panel">
+        <div class="panel-title" style="color:var(--gold)">🏆 Model Rankings — All Games</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <button onclick="filterLb('all')" id="lb-all" class="btn btn-outline" style="font-size:11px;padding:4px 12px">All</button>
+          <button onclick="filterLb('chess')" id="lb-chess" class="btn btn-outline" style="font-size:11px;padding:4px 12px">♟ Chess</button>
+          <button onclick="filterLb('checkers')" id="lb-checkers" class="btn btn-outline" style="font-size:11px;padding:4px 12px">⬤ Checkers</button>
+          <button onclick="filterLb('reversi')" id="lb-reversi" class="btn btn-outline" style="font-size:11px;padding:4px 12px">◉ Reversi</button>
+        </div>
+        <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);letter-spacing:.08em;padding:0 12px;margin-bottom:6px">
+          <span style="width:24px">#</span><span style="flex:1">Model</span>
+          <span style="width:40px;text-align:right">W</span>
+          <span style="width:40px;text-align:right">L</span>
+          <span style="width:40px;text-align:right">D</span>
+        </div>
+        <div id="lb-list">
+          <!-- populated by JS -->
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:var(--muted);text-align:center">Rankings reset monthly. Submit your model battles to the leaderboard.</div>
+      </div>
+    </div><!-- /pane-leaderboard -->
+
+  </div><!-- /left col -->
+
+  <!-- RIGHT: BATTLE AREA -->
+  <div>
+    <!-- Battle Status -->
+    <div class="panel" style="margin-bottom:16px" id="battle-area">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="panel-title" style="color:var(--purple);margin:0">⚔ Battle Monitor</div>
+        <div style="display:flex;gap:8px">
+          <span id="battle-status-badge" style="font-size:10px;padding:3px 10px;border-radius:99px;background:rgba(74,85,104,.2);border:1px solid var(--border);color:var(--muted)">Idle</span>
+          <button id="stop-btn" onclick="stopBattle()" style="display:none" class="btn btn-red" style="font-size:11px;padding:4px 12px">⏹ Stop</button>
+        </div>
+      </div>
+
+      <div class="scoreboard" id="battle-scoreboard">
+        <div class="score-box">
+          <div class="score-name" id="battle-name-a">Model A</div>
+          <div class="score-val" id="battle-score-a">0</div>
+        </div>
+        <div class="score-vs">VS</div>
+        <div class="score-box">
+          <div class="score-name" id="battle-name-b">Model B</div>
+          <div class="score-val" id="battle-score-b">0</div>
+        </div>
+      </div>
+
+      <div id="current-move-info" style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px;min-height:18px"></div>
+
+      <!-- GAME PREVIEW FRAME -->
+      <div style="position:relative;background:#080a08;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px">
+        <div id="game-frame-placeholder" style="display:flex;align-items:center;justify-content:center;min-height:300px;flex-direction:column;gap:12px">
+          <div style="font-size:48px">⚔</div>
+          <div style="font-size:13px;color:var(--muted)">Configure models and start a battle to see live gameplay</div>
+          <a href="/games/arena.html" class="btn btn-outline" style="font-size:12px;padding:6px 18px">▶ Play Manually in Arena</a>
+        </div>
+        <iframe id="game-embed" src="" style="display:none;width:100%;min-height:500px;border:none"></iframe>
+      </div>
+
+      <!-- MOVE LOG -->
+      <div style="font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Move Log</div>
+      <div class="move-log" id="move-log">
+        <div class="move-entry system">Battle not started. Configure models above and click Start.</div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="panel" id="stats-panel" style="display:none">
+      <div class="panel-title" style="color:var(--gold)">📊 Battle Statistics</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center">
+        <div>
+          <div style="font-size:20px;font-weight:800;color:var(--purple)" id="stat-moves">0</div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Moves</div>
+        </div>
+        <div>
+          <div style="font-size:20px;font-weight:800;color:var(--gold)" id="stat-avg-time">—</div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Avg Response</div>
+        </div>
+        <div>
+          <div style="font-size:20px;font-weight:800;color:var(--green)" id="stat-spectators">0</div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Spectators</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">API Cost Estimate</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <span style="color:var(--purple)">Model A (<span id="cost-a-name">—</span>)</span>
+        <span id="cost-a">$0.00</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="color:var(--accent)">Model B (<span id="cost-b-name">—</span>)</span>
+        <span id="cost-b">$0.00</span>
+      </div>
+    </div>
+  </div><!-- /right col -->
+</div><!-- /main -->
+
+<footer style="border-top:1px solid var(--border);padding:24px;text-align:center;color:var(--muted);font-size:12px;margin-top:40px">
+  <a href="/" style="color:var(--gold);font-weight:700;text-decoration:none;font-size:15px">GoGames.XYZ</a> —
+  <a href="/games/arena.html" style="color:var(--muted);text-decoration:none">Board Games</a> ·
+  <a href="/pay.html" style="color:var(--muted);text-decoration:none">GGX Tokens</a> ·
+  <a href="https://github.com/george-shepov/gogames.xyz" style="color:var(--muted);text-decoration:none">GitHub</a>
+</footer>
+
+<script>
+// ── STATE ──
+let selectedGame = 'chess';
+let battleRunning = false;
+let battleMoves = 0;
+let selectedSpecBet = null;
+let responseTimes = [];
+
+// ── TAB SWITCHING ──
+function showTab(t) {
+  ['config','spectate','leaderboard'].forEach(id => {
+    document.getElementById('tab-'+id).className = 'tab' + (id===t?' active':'');
+    document.getElementById('pane-'+id).style.display = id===t ? 'block' : 'none';
+  });
+  if (t==='leaderboard') renderLeaderboard();
+}
+
+// ── GAME SELECT ──
+function selectGame(g) {
+  selectedGame = g;
+  ['chess','checkers','reversi','tictactoe'].forEach(id => {
+    document.getElementById('gsb-'+id).className = 'game-sel-btn' + (id===g?' active':'');
+  });
+}
+
+// ── MODEL TEST ──
+async function testModel(side) {
+  const url = document.getElementById(side+'-url').value.replace(/\/$/,'');
+  const key = document.getElementById(side+'-key').value;
+  const model = document.getElementById(side+'-model').value;
+  const el = document.getElementById(side+'-test-result');
+  el.textContent = '🔄 Testing…';
+  el.style.color = '#c9a84c';
+  try {
+    const res = await fetch(url + '/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body: JSON.stringify({model, messages:[{role:'user',content:'Say OK'}], max_tokens:5})
+    });
+    if (res.ok) { el.textContent = '✅ Connected'; el.style.color = '#10b981'; }
+    else { el.textContent = '❌ Error '+res.status; el.style.color = '#ef4444'; }
+  } catch(e) {
+    el.textContent = '❌ ' + (e.message.includes('fetch') ? 'CORS/network error (expected from browser)' : e.message);
+    el.style.color = '#f59e0b';
+  }
+}
+
+// ── BATTLE CONTROL ──
+function startBattle() {
+  const cfgA = getModelConfig('a');
+  const cfgB = getModelConfig('b');
+  if (!cfgA.key || !cfgB.key) { alert('Enter API keys for both models'); return; }
+
+  battleRunning = true;
+  battleMoves = 0;
+  responseTimes = [];
+  document.getElementById('start-btn').style.display = 'none';
+  document.getElementById('stop-btn').style.display = 'inline-flex';
+  document.getElementById('stats-panel').style.display = 'block';
+  document.getElementById('battle-status-badge').textContent = '🔴 LIVE';
+  document.getElementById('battle-status-badge').style.color = '#ef4444';
+  document.getElementById('battle-status-badge').style.background = 'rgba(239,68,68,.12)';
+  document.getElementById('battle-status-badge').style.borderColor = 'rgba(239,68,68,.3)';
+  document.getElementById('battle-name-a').textContent = cfgA.name;
+  document.getElementById('battle-name-b').textContent = cfgB.name;
+  document.getElementById('cost-a-name').textContent = cfgA.model;
+  document.getElementById('cost-b-name').textContent = cfgB.model;
+
+  // Load game in iframe
+  const gameMap = {chess:'arena.html?game=chess&mode=ai', checkers:'arena.html?game=ck&mode=ai', reversi:'arena.html?game=rv&mode=ai', tictactoe:'tictactoe.html'};
+  const src = '/games/' + (gameMap[selectedGame] || 'arena.html');
+  document.getElementById('game-embed').src = src;
+  document.getElementById('game-embed').style.display = 'block';
+  document.getElementById('game-frame-placeholder').style.display = 'none';
+
+  addLog('system', `⚔ Battle started: ${cfgA.name} vs ${cfgB.name} in ${selectedGame}`);
+  runBattleLoop(cfgA, cfgB);
+}
+
+function stopBattle() {
+  battleRunning = false;
+  document.getElementById('start-btn').style.display = 'flex';
+  document.getElementById('stop-btn').style.display = 'none';
+  document.getElementById('battle-status-badge').textContent = 'Stopped';
+  document.getElementById('battle-status-badge').style.color = '#4a5568';
+  document.getElementById('battle-status-badge').style.background = 'rgba(74,85,104,.1)';
+  document.getElementById('battle-status-badge').style.borderColor = 'var(--border)';
+  addLog('system', '⏹ Battle stopped by operator');
+}
+
+async function runBattleLoop(cfgA, cfgB) {
+  const maxMoves = parseInt(document.getElementById('max-moves').value) || 200;
+  const delay = parseInt(document.getElementById('move-delay').value) || 1500;
+  while (battleRunning && battleMoves < maxMoves) {
+    const isA = battleMoves % 2 === 0;
+    const cfg = isA ? cfgA : cfgB;
+    const side = isA ? 'White/First' : 'Black/Second';
+    document.getElementById('current-move-info').textContent = `Move ${battleMoves+1}: ${cfg.name} (${side}) is thinking…`;
+    const t0 = Date.now();
+    try {
+      const move = await fetchAIMove(cfg, selectedGame, battleMoves);
+      const elapsed = Date.now() - t0;
+      responseTimes.push(elapsed);
+      updateStats(elapsed, cfgA, cfgB);
+      addLog(isA?'a':'b', `Move ${battleMoves+1} [${cfg.name}]: ${move} (${elapsed}ms)`);
+      battleMoves++;
+      document.getElementById('stat-moves').textContent = battleMoves;
+    } catch(e) {
+      addLog('system', `⚠ API Error (${cfg.name}): ${e.message}`);
+      break;
+    }
+    await new Promise(r => setTimeout(r, delay));
+  }
+  if (battleMoves >= maxMoves) {
+    addLog('system', `🏁 Max moves (${maxMoves}) reached. Game ended.`);
+    document.getElementById('battle-status-badge').textContent = 'Finished';
+  }
+  battleRunning = false;
+  document.getElementById('start-btn').style.display = 'flex';
+  document.getElementById('stop-btn').style.display = 'none';
+}
+
+async function fetchAIMove(cfg, game, moveNum) {
+  const gameDesc = {chess:'Chess (8x8)', checkers:'Checkers (8x8)', reversi:'Reversi (8x8)', tictactoe:'Tic-Tac-Toe 10x10 (5 in a row)'};
+  const side = moveNum % 2 === 0 ? 'White/First' : 'Black/Second';
+  const prompt = `You are playing ${gameDesc[game]||game} as ${side}. Move number ${moveNum+1}.\n\nRespond with ONLY the move in the most compact notation possible (e.g., "e2e4" for chess, "r3c4" for grid games). No explanation.`;
+
+  const body = {
+    model: cfg.model,
+    messages: [
+      ...(cfg.sys ? [{role:'system',content:cfg.sys}] : []),
+      {role:'user', content:prompt}
+    ],
+    temperature: parseFloat(cfg.temp) || 0.3,
+    max_tokens: parseInt(cfg.maxtok) || 64
+  };
+
+  const res = await fetch(cfg.url + '/chat/completions', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error('HTTP '+res.status+' from '+cfg.url);
+  const data = await res.json();
+  return (data.choices?.[0]?.message?.content || '').trim().slice(0, 20);
+}
+
+function getModelConfig(side) {
+  return {
+    name: document.getElementById(side+'-name').value || ('Model '+side.toUpperCase()),
+    url:  (document.getElementById(side+'-url').value || 'https://api.openai.com/v1').replace(/\/$/,''),
+    key:  document.getElementById(side+'-key').value,
+    model:document.getElementById(side+'-model').value || 'gpt-4o',
+    temp: document.getElementById(side+'-temp').value,
+    maxtok:document.getElementById(side+'-maxtok').value,
+    sys:  document.getElementById(side+'-sys').value,
+  };
+}
+
+function addLog(type, text) {
+  const log = document.getElementById('move-log');
+  const el = document.createElement('div');
+  el.className = 'move-entry ' + type;
+  el.textContent = text;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+function updateStats(elapsed, cfgA, cfgB) {
+  const avg = Math.round(responseTimes.reduce((a,b)=>a+b,0)/responseTimes.length);
+  document.getElementById('stat-avg-time').textContent = avg+'ms';
+  // Rough cost estimate (per-move ~ $0.00002 for gpt-4o-mini)
+  const costA = (Math.ceil(battleMoves/2) * 0.00002).toFixed(4);
+  const costB = (Math.floor(battleMoves/2) * 0.00002).toFixed(4);
+  document.getElementById('cost-a').textContent = '$'+costA;
+  document.getElementById('cost-b').textContent = '$'+costB;
+}
+
+// ── SPECTATE ──
+function joinSpectate(id) {
+  document.getElementById('spectate-game-panel').style.display = 'block';
+  const titles = {
+    'demo-gpt-claude': 'GPT-4o vs Claude-3.5-Sonnet · Chess',
+    'demo-llama-mistral': 'Llama-3.1-70B vs Mistral-7B · Checkers',
+    'demo-gemini-gpt': 'Gemini-Pro vs GPT-4o-mini · Reversi',
+  };
+  document.getElementById('spectate-title').textContent = '🔴 LIVE: ' + (titles[id] || id);
+  document.getElementById('spec-name-a').textContent = id.split('-')[1] || 'Model A';
+  document.getElementById('spec-name-b').textContent = id.split('-')[2] || 'Model B';
+  // Simulated live scores
+  document.getElementById('spec-score-a').textContent = Math.floor(Math.random()*30);
+  document.getElementById('spec-score-b').textContent = Math.floor(Math.random()*30);
+}
+
+function selectSpecBet(choice) {
+  selectedSpecBet = choice;
+  ['a','draw','b'].forEach(c => {
+    document.getElementById('spec-bet-'+c).classList.toggle('sel', c===choice);
+  });
+}
+
+function placeSpecBet() {
+  if (!selectedSpecBet) { document.getElementById('spec-bet-msg').textContent = '⚠ Select a bet option'; return; }
+  const amount = parseInt(document.getElementById('spec-wager').value) || 0;
+  const bal = parseInt(document.getElementById('spec-bal').textContent) || 0;
+  if (amount < 1 || amount > bal) { document.getElementById('spec-bet-msg').textContent = amount > bal ? '⚠ Insufficient balance' : '⚠ Invalid amount'; return; }
+  document.getElementById('spec-bal').textContent = bal - amount;
+  document.getElementById('ggx-bal').textContent = bal - amount;
+  const odds = {'a':1.85,'draw':8.0,'b':2.10};
+  const pot = (amount * odds[selectedSpecBet]).toFixed(1);
+  document.getElementById('spec-bet-msg').textContent = `✅ Bet placed: ${amount} GGX on ${selectedSpecBet.toUpperCase()} · Potential: ${pot} GGX`;
+  document.getElementById('spec-bet-msg').style.color = '#10b981';
+}
+
+// ── LEADERBOARD ──
+const LEADERBOARD_DATA = [
+  {name:'GPT-4o', wins:47, losses:12, draws:5, game:'all'},
+  {name:'Claude-3.5-Sonnet', wins:43, losses:15, draws:8, game:'all'},
+  {name:'Gemini-1.5-Pro', wins:38, losses:20, draws:7, game:'all'},
+  {name:'GPT-4o-mini', wins:31, losses:28, draws:6, game:'all'},
+  {name:'Llama-3.1-70B', wins:29, losses:32, draws:4, game:'all'},
+  {name:'Mistral-7B', wins:18, losses:44, draws:3, game:'all'},
+  {name:'GPT-3.5-Turbo', wins:15, losses:50, draws:7, game:'all'},
+];
+
+function renderLeaderboard() {
+  const list = document.getElementById('lb-list');
+  list.innerHTML = LEADERBOARD_DATA.map((r,i) => `
+    <div class="lb-row">
+      <span class="lb-rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</span>
+      <span class="lb-name">${r.name}</span>
+      <span class="lb-wins">${r.wins}W</span>
+      <span class="lb-losses">${r.losses}L</span>
+      <span class="lb-draws">${r.draws}D</span>
+    </div>`).join('');
+}
+
+function filterLb(game) {
+  ['all','chess','checkers','reversi'].forEach(g => document.getElementById('lb-'+g).className = 'btn btn-outline' + (g===game?' active':''));
+  // In a real app, fetch filtered data from server
+  renderLeaderboard();
+}
+
+// Init
+renderLeaderboard();
+
+// Handle URL hash for spectate mode
+if (location.hash === '#spectate') { showTab('spectate'); }
+</script>
+</body>
+</html>
