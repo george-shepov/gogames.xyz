@@ -1,0 +1,14 @@
+{
+  "name": "GoGames Spades Royale",
+  "short_name": "Spades Royale",
+  "description": "GoGames Spades Royale with smart bots, saved matches, tutorial, GGX wallet awareness, and server-managed Arena betting.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07110d",
+  "theme_color": "#07110d",
+  "orientation": "any",
+  "categories": ["games", "entertainment"],
+  "icons": [{"src":"./icons/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
