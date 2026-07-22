@@ -1,5 +1,5 @@
-const CACHE='gogames-spades-royale-v5';
-const CORE=['./','./index.html','./styles.css','./table-shell.css','./table-cards.css','./table-dialogs.css','./responsive.css','./game-core.js','./game-play.js','./game-match.js','./game-init.js','./platform.js','./manifest.webmanifest','./icons/icon.svg'];
+const CACHE='gogames-spades-royale-v6';
+const CORE=['./','./index.html','./styles.css','./table-shell.css','./table-cards.css','./table-dialogs.css','./responsive.css','./game.js','./game-core.js','./game-play.js','./game-match.js','./game-init.js','./platform.js','./manifest.webmanifest','./icons/icon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
