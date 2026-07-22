@@ -1,0 +1,23 @@
+name: Validate Spades Royale
+on:
+  pull_request:
+    paths:
+      - 'games/spades/**'
+      - 'scripts/validate-spades.js'
+      - '.github/workflows/validate-spades.yml'
+  push:
+    branches:
+      - 'agent/spades-platform-edition'
+    paths:
+      - 'games/spades/**'
+      - 'scripts/validate-spades.js'
+      - '.github/workflows/validate-spades.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/validate-spades.js
