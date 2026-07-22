@@ -23,10 +23,12 @@
         if (typeof DecompressionStream !== 'function') {
           throw new Error('This browser is too old to open Spades Royale. Please update Chrome, Edge, Firefox, or Safari.');
         }
-        const response = await fetch('./app.html.gz.b64', { cache: 'no-cache' });
-        if (!response.ok) throw new Error(`Game package failed to load (${response.status}).`);
+        const parts = ['./app.part-00', './app.part-01', './app.part-02', './app.part-03', './app.part-04', './app.part-05', './app.part-06'];
+        const responses = await Promise.all(parts.map(path => fetch(path, { cache: 'no-cache' })));
+        const failed = responses.find(response => !response.ok);
+        if (failed) throw new Error(`Game package failed to load (${failed.status}).`);
         status.textContent = 'Dealing cards…';
-        const encoded = (await response.text()).trim();
+        const encoded = (await Promise.all(responses.map(response => response.text()))).join('').trim();
         const binary = atob(encoded);
         const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
         const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
