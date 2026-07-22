@@ -1,0 +1,32 @@
+name: Validate Spades Royale
+on:
+  pull_request:
+    paths:
+      - 'games/spades/**'
+      - 'scripts/validate-spades.js'
+      - '.github/workflows/validate-spades.yml'
+  push:
+    branches:
+      - 'agent/spades-platform-edition'
+    paths:
+      - 'games/spades/**'
+      - 'scripts/validate-spades.js'
+      - '.github/workflows/validate-spades.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Required files
+        run: node scripts/validate-spades.js files
+      - name: JavaScript syntax
+        run: node scripts/validate-spades.js syntax
+      - name: HTML and module references
+        run: node scripts/validate-spades.js references
+      - name: Play-money boundary
+        run: node scripts/validate-spades.js boundary
+      - name: Offline cache coverage
+        run: node scripts/validate-spades.js offline
