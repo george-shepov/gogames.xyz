@@ -19,5 +19,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - run: node scripts/validate-spades.js
+          node-version: '24'
+      - name: Required files
+        run: node scripts/validate-spades.js files
+      - name: JavaScript syntax
+        run: node scripts/validate-spades.js syntax
+      - name: HTML and module references
+        run: node scripts/validate-spades.js references
+      - name: Play-money boundary
+        run: node scripts/validate-spades.js boundary
+      - name: Offline cache coverage
+        run: node scripts/validate-spades.js offline
