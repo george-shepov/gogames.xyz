@@ -9,6 +9,16 @@
   "background_color": "#07110d",
   "theme_color": "#07110d",
   "orientation": "any",
-  "categories": ["games", "entertainment"],
-  "icons": [{"src":"./icons/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
