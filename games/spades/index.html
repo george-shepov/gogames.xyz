@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07110d">
+  <title>Spades Royale · GoGames</title>
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 50% 10%,#124b37,#020806 65%);color:#f8f4e8;font:600 16px/1.5 system-ui,sans-serif;padding:24px}.loader{text-align:center;max-width:560px}.mark{font-size:72px;color:#f0c75e;filter:drop-shadow(0 8px 30px rgba(212,175,55,.35));animation:pulse 1.25s ease-in-out infinite}.title{font-family:Georgia,serif;letter-spacing:.08em;color:#f0c75e;font-size:clamp(28px,7vw,52px);margin:.2rem 0}.status{color:#b9c4bd}.error{color:#ff9d9d;white-space:pre-wrap}a{color:#f0c75e}@keyframes pulse{50%{transform:scale(1.08);opacity:.72}}@media(prefers-reduced-motion:reduce){.mark{animation:none}}
+  </style>
+</head>
+<body>
+  <main class="loader" aria-live="polite">
+    <div class="mark" aria-hidden="true">♠</div>
+    <h1 class="title">Spades Royale</h1>
+    <p class="status" id="status">Preparing the table…</p>
+  </main>
+  <script>
+    (async () => {
+      const status = document.getElementById('status');
+      try {
+        if (typeof DecompressionStream !== 'function') {
+          throw new Error('This browser is too old to open Spades Royale. Please update Chrome, Edge, Firefox, or Safari.');
+        }
+        const parts = ['./app.part-00', './app.part-01', './app.part-02', './app.part-03', './app.part-04', './app.part-05', './app.part-06'];
+        const responses = await Promise.all(parts.map(path => fetch(path, { cache: 'no-cache' })));
+        const failed = responses.find(response => !response.ok);
+        if (failed) throw new Error(`Game package failed to load (${failed.status}).`);
+        status.textContent = 'Dealing cards…';
+        const encoded = (await Promise.all(responses.map(response => response.text()))).join('').trim();
+        const binary = atob(encoded);
+        const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+        const html = await new Response(stream).text();
+        if (!html.includes('Spades Royale') || !html.includes('GAME ENGINE')) {
+          throw new Error('Game package validation failed.');
+        }
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (error) {
+        console.error(error);
+        status.className = 'error';
+        status.textContent = `${error.message || error}\n\nReload the page. If the problem continues, open the GoGames home page and try again.`;
+      }
+    })();
+  </script>
+</body>
+</html>
