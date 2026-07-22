@@ -14,7 +14,7 @@
     $('#wallet-title').textContent='Play GGX Arena Predictions';
     $('#wallet-title').nextElementSibling.textContent='Practice-only points for predicting server-listed AI arenas. Play GGX cannot be purchased, cashed out, transferred, or exchanged for prizes.';
     $('#wallet-connect').classList.add('hidden');$('#wallet-dashboard').classList.remove('hidden');
-    const store=$('a[href="../../pay.html"]');if(store)store.classList.add('hidden');
+    const store=$('#wallet-dashboard a.gold-btn');if(store)store.classList.add('hidden');
     const balanceTitle=$('#wallet-dashboard .platform-card h3');if(balanceTitle)balanceTitle.textContent='Play GGX balance';
     $('#wallet-refresh-btn').textContent='Settle predictions';$('#wallet-disconnect-btn').textContent='Reset play points';
     $('#wallet-load-battles-btn').textContent='Reload arenas';
