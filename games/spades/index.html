@@ -1,3 +1,243 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<meta content="#07110d" name="theme-color"/>
+<meta content="GoGames Spades Royale — a polished, free-to-play Spades card game with smart AI, nil bids, multi-round matches, saved progress, interactive tutorial, and offline support." name="description"/>
+<meta content="GoGames Spades Royale" name="application-name"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
+<title>♠️ Spades Royale · GoGames</title>
+<link href="./manifest.webmanifest" rel="manifest"/>
+<link href="./icons/icon.svg" rel="icon" type="image/svg+xml"/>
+<script>
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+            });
+        }
+    </script>
+<link href="./styles.css" rel="stylesheet"/>
+</head>
+<body>
+<!-- ── Confetti Container ── -->
+<div aria-hidden="true" class="confetti-container hidden" id="confetti"></div>
+<!-- ── Tutorial Skip Button ── -->
+<div aria-hidden="true" class="tutorial-overlay hidden" id="tutorial-overlay"></div>
+<!-- ═══════════ CASINO TABLE ═══════════ -->
+<div class="casino-table" id="casino-table">
+<div aria-hidden="true" class="table-watermark">♠</div>
+<!-- Header -->
+<div class="table-header">
+<div class="brand">
+<div aria-hidden="true" class="brand-mark">♠</div>
+<h1>Spades Royale <small style="font:700 9px Inter,system-ui;letter-spacing:.18em;color:rgba(255,255,255,.55);display:block;margin-top:4px;">GOGAMES PLATFORM</small></h1>
+</div>
+<div class="header-actions">
+<button aria-label="Toggle sound" aria-pressed="true" class="gold-btn btn-secondary icon-btn" id="btn-sound" type="button">🔊</button>
+<button class="gold-btn btn-secondary hidden" id="btn-install" type="button">Install</button>
+<button aria-label="Open GoGames wallet and Arena bets" class="gold-btn btn-secondary wallet-balance-pill" id="btn-wallet" type="button">💎 <span id="wallet-balance">GGX</span></button>
+<button class="gold-btn btn-secondary btn-tutorial" id="btn-tutorial" type="button">📖 Tutorial</button>
+<button class="gold-btn btn-secondary" id="btn-stats" type="button">Stats</button>
+<button class="gold-btn btn-secondary" id="btn-rules" type="button">Rules</button>
+<button class="gold-btn" id="btn-new-game" type="button">✦ New Match</button>
+</div>
+</div>
+<!-- Score Strip -->
+<div class="score-strip">
+<div class="team-badge">
+<div class="team-emblem">Y</div>
+<div class="team-info">
+<div class="team-name">Your Team</div>
+<div class="team-meta">Bid <span id="team-a-bid">—</span> · Bags <span id="team-a-bags">0</span></div>
+</div>
+<div class="team-score-value" id="team-a-score">0</div>
+</div>
+<div class="round-badge">Round <span id="round-num">1</span> · Target <span id="target-score">250</span></div>
+<div class="team-badge" style="flex-direction: row-reverse; text-align: right;">
+<div class="team-emblem">R</div>
+<div class="team-info" style="text-align: right;">
+<div class="team-name">Rival Team</div>
+<div class="team-meta">Bid <span id="team-b-bid">—</span> · Bags <span id="team-b-bags">0</span></div>
+</div>
+<div class="team-score-value" id="team-b-score">0</div>
+</div>
+</div>
+<!-- Playing Field -->
+<div class="playing-field" id="playing-field">
+<!-- Dealer Toast -->
+<div aria-atomic="true" aria-live="polite" class="dealer-toast" id="dealer-toast">
+<div class="toast-bubble" id="toast-msg">Welcome. Start a new match or take the tutorial.</div>
+</div>
+<!-- Seats -->
+<div class="seat seat-north" id="seat-2">
+<div class="seat-avatar">N</div>
+<div class="seat-info">
+<div class="seat-name">Nova · Partner</div>
+<div class="seat-detail">Bid <span id="bid-2">—</span></div>
+<div class="mini-cards" id="cards-2"></div>
+</div>
+<div class="seat-tricks" id="tricks-2">0</div>
+</div>
+<div class="seat seat-west" id="seat-1">
+<div class="seat-avatar">V</div>
+<div class="seat-info">
+<div class="seat-name">Vega</div>
+<div class="seat-detail">Bid <span id="bid-1">—</span></div>
+<div class="mini-cards" id="cards-1"></div>
+</div>
+<div class="seat-tricks" id="tricks-1">0</div>
+</div>
+<div class="seat seat-east" id="seat-3">
+<div class="seat-avatar">O</div>
+<div class="seat-info">
+<div class="seat-name">Orion</div>
+<div class="seat-detail">Bid <span id="bid-3">—</span></div>
+<div class="mini-cards" id="cards-3"></div>
+</div>
+<div class="seat-tricks" id="tricks-3">0</div>
+</div>
+<div class="seat seat-south" id="seat-0">
+<div class="seat-avatar">Y</div>
+<div class="seat-info">
+<div class="seat-name">You</div>
+<div class="seat-detail">Bid <span id="bid-0">—</span></div>
+</div>
+<div class="seat-tricks" id="tricks-0">0</div>
+</div>
+<!-- Trick Zone -->
+<div class="trick-zone" id="trick-zone">
+<div class="played-slot" data-player="0" id="played-0"></div>
+<div class="played-slot" data-player="1" id="played-1"></div>
+<div class="played-slot" data-player="2" id="played-2"></div>
+<div class="played-slot" data-player="3" id="played-3"></div>
+<div aria-live="polite" class="center-message" id="center-msg">Press ✦ New Match or 📖 Tutorial.</div>
+</div>
+<!-- Hand Dock -->
+<div class="hand-dock" id="hand-dock">
+<div class="hand-label">Your Hand · <span id="hand-count">0</span> cards</div>
+<div class="product-note">Local Spades is free · GGX wallet and Arena bets are server-managed</div>
+<div aria-label="Your cards" class="player-hand" id="player-hand" role="list"></div>
+</div>
+</div>
+</div>
+<!-- ═══════════ BID MODAL ═══════════ -->
+<div aria-labelledby="bid-title" aria-modal="true" class="modal-backdrop hidden" id="bid-modal" role="dialog">
+<div class="modal-panel">
+<h2 id="bid-title">Call Your Tricks</h2>
+<p>Bid how many tricks you'll win. Partner (Nova) bid: <strong id="partner-bid-display" style="color: var(--gold-light);">—</strong></p>
+<div class="bid-summary">
+<div class="bid-player-card"><span>Vega</span><strong id="modal-bid-1">—</strong></div>
+<div class="bid-player-card"><span>Nova</span><strong id="modal-bid-2">—</strong></div>
+<div class="bid-player-card"><span>Orion</span><strong id="modal-bid-3">—</strong></div>
+<div class="bid-player-card"><span>You</span><strong id="modal-bid-0">?</strong></div>
+</div>
+<div aria-label="Choose a bid" class="bid-grid" id="bid-grid"></div>
+<div class="modal-actions">
+<button class="gold-btn btn-secondary" id="btn-suggestion" type="button">Use Suggestion</button>
+<button class="gold-btn" disabled="" id="btn-confirm-bid" type="button">Lock Bid</button>
+</div>
+</div>
+</div>
+<!-- ═══════════ ROUND RESULT MODAL ═══════════ -->
+<div aria-labelledby="round-title" aria-modal="true" class="modal-backdrop hidden" id="round-modal" role="dialog">
+<div class="modal-panel">
+<h2 id="round-title">Round Complete</h2>
+<div id="round-results"></div>
+<div class="modal-actions">
+<button class="gold-btn btn-secondary" id="btn-end-match" type="button">End Match</button>
+<button class="gold-btn" id="btn-next-round" type="button">Next Round</button>
+</div>
+</div>
+</div>
+<!-- ═══════════ RULES MODAL ═══════════ -->
+<div aria-labelledby="rules-title" aria-modal="true" class="modal-backdrop hidden" id="rules-modal" role="dialog">
+<div class="modal-panel">
+<h2 id="rules-title">How to Play</h2>
+<div class="rule-grid">
+<div class="rule-card"><strong>1 · Bid</strong><p>Predict how many of 13 tricks you'll win. Partners combine bids.</p></div>
+<div class="rule-card"><strong>2 · Follow Suit</strong><p>Play the led suit if you have it. Otherwise, discard or trump.</p></div>
+<div class="rule-card"><strong>3 · Trump ♠</strong><p>Spades beat any suit. Can't lead spades until broken.</p></div>
+<div class="rule-card"><strong>4 · Score</strong><p>Make bid = +10/trick + bags. Miss = −10/trick. Nil = ±100.</p></div>
+<div class="rule-card"><strong>5 · Bags</strong><p>Every 10 accumulated bags costs −100. First to 250 wins.</p></div>
+<div class="rule-card"><strong>6 · Nil</strong><p>Bid 0 tricks. Succeed = +100. Fail = −100.</p></div>
+</div>
+<div class="modal-actions">
+<button class="gold-btn" data-close="rules-modal" type="button">Got It</button>
+</div>
+</div>
+</div>
+<!-- ═══════════ STATS MODAL ═══════════ -->
+<div aria-labelledby="stats-title" aria-modal="true" class="modal-backdrop hidden" id="stats-modal" role="dialog">
+<div class="modal-panel">
+<h2 id="stats-title">Player Record</h2>
+<p>Stored only in this browser.</p>
+<div class="stats-grid">
+<div class="stat-card"><span>Matches</span><strong id="stat-matches">0</strong></div>
+<div class="stat-card"><span>Win Rate</span><strong id="stat-win-rate">0%</strong></div>
+<div class="stat-card"><span>Wins</span><strong id="stat-wins">0</strong></div>
+<div class="stat-card"><span>Best Score</span><strong id="stat-best-score">0</strong></div>
+</div>
+<div class="modal-actions">
+<button class="gold-btn btn-secondary" id="btn-reset-stats" type="button">Reset Stats</button>
+<button class="gold-btn" data-close="stats-modal" type="button">Close</button>
+</div>
+</div>
+</div>
+<!-- ═══════════ GOGAMES WALLET + ARENA BETS ═══════════ -->
+<div aria-labelledby="wallet-title" aria-modal="true" class="modal-backdrop hidden" id="wallet-modal" role="dialog">
+<div class="modal-panel platform-panel">
+<h2 id="wallet-title">GoGames Wallet &amp; Arena Bets</h2>
+<p>Connect your GoGames account to view GGX and bet on server-listed live arenas.</p>
+<div aria-live="polite" class="platform-status" id="wallet-status"></div>
+<div class="platform-card" id="wallet-connect">
+<h3>Connect wallet</h3>
+<div class="platform-row">
+<input autocomplete="email" class="platform-input" id="wallet-email" placeholder="Email used on GoGames" type="email"/>
+<button class="gold-btn" id="wallet-connect-btn" type="button">Connect</button>
+</div>
+</div>
+<div class="hidden" id="wallet-dashboard">
+<div class="platform-grid">
+<section class="platform-card">
+<h3>GGX balance</h3>
+<div style="font:800 34px Georgia,serif;color:var(--gold-light);"><span id="wallet-balance-large">0</span> GGX</div>
+<div class="platform-row" style="margin-top:10px;">
+<button class="gold-btn btn-secondary" id="wallet-refresh-btn" type="button">Refresh</button>
+<a class="gold-btn" href="../../pay.html" style="text-decoration:none;">Token Store</a>
+<button class="gold-btn btn-secondary" id="wallet-disconnect-btn" type="button">Disconnect</button>
+</div>
+</section>
+<section class="platform-card">
+<h3>Bet settings</h3>
+<label for="wallet-bet-amount" style="display:block;color:var(--muted);font-size:11px;margin-bottom:5px;">Default stake</label>
+<select class="platform-select" id="wallet-bet-amount">
+<option value="5">5 GGX</option><option value="10">10 GGX</option><option value="25">25 GGX</option><option value="50">50 GGX</option>
+</select>
+<p style="color:var(--muted);font-size:11px;margin-top:8px;">Only arenas marked open by the server accept bets.</p>
+</section>
+</div>
+<section class="platform-card">
+<div class="platform-row" style="justify-content:space-between;">
+<h3 style="margin:0;">Live betting arenas</h3>
+<button class="gold-btn btn-secondary" id="wallet-load-battles-btn" type="button">Reload arenas</button>
+</div>
+<div class="battle-list" id="wallet-battles"><p style="color:var(--muted);">Open the list to find live arenas.</p></div>
+</section>
+</div>
+<div class="platform-note"><strong>Integrity boundary:</strong> this local Spades match never credits, debits, or settles GGX. Browser-submitted game results are not trusted. GGX bets are accepted only through GoGames server endpoints for server-listed arenas.</div>
+<div class="modal-actions"><button class="gold-btn btn-secondary" data-close="wallet-modal" type="button">Close</button></div>
+</div>
+</div>
+
+<script src="./game.js"></script>
+<script defer="" src="./platform.js"></script>
+</body>
+</html>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -48,3 +288,4 @@
   </script>
 </body>
 </html>
+

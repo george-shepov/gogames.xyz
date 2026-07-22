@@ -1,7 +1,7 @@
 {
   "name": "GoGames Spades Royale",
   "short_name": "Spades Royale",
-  "description": "Premium free-to-play Spades with smart bots, saved matches, statistics, and offline support.",
+  "description": "GoGames Spades Royale with smart bots, saved matches, tutorial, GGX wallet awareness, and server-managed Arena betting.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
