@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Positive IQ Test</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#111827; --ink:#e5e7eb; --muted:#9ca3af; --accent:#38bdf8; --ok:#34d399; --warn:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink); background: radial-gradient(1000px 600px at 10% -10%, #1f2937 0%, #0b1021 40%, #060914 100%), var(--bg);}
+  .wrap{max-width:1000px; margin:0 auto; padding:24px}
+  header{display:flex; align-items:center; gap:16px; margin-bottom:16px}
+  header h1{font-size:1.6rem; margin:0}
+  header .tag{background:linear-gradient(90deg,var(--accent),#60a5fa); color:#00131f; font-weight:700; padding:4px 10px; border-radius:999px; font-size:.8rem}
+  .card{background:rgba(255,255,255,0.04); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:18px}
+  .grid{display:grid; gap:16px}
+  @media(min-width:900px){ .grid.cols-2{grid-template-columns:1fr 1fr} }
+  button{cursor:pointer; border:1px solid rgba(255,255,255,0.1); background:linear-gradient(180deg,#1f2937,#111827); color:var(--ink); padding:12px 16px; border-radius:12px; font-weight:600}
+  button:hover{border-color:rgba(255,255,255,0.2); transform:translateY(-1px)}
+  button.primary{background:linear-gradient(180deg,#22d3ee,#06b6d4); color:#09272d; border:none}
+  .muted{color:var(--muted)}
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .pill{padding:4px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.1); color:var(--muted); font-size:.8rem}
+  .hidden{display:none !important}
+  .center{text-align:center}
+  .notice{font-size:.95rem; color:var(--muted)}
+  .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; background:rgba(255,255,255,0.07); padding:2px 6px; border-radius:6px; border:1px solid rgba(255,255,255,0.1)}
+  .bar{height:10px; background:#0b1225; border-radius:999px; overflow:hidden; border:1px solid rgba(255,255,255,0.06)}
+  .bar > span{display:block; height:100%; background:linear-gradient(90deg,#22d3ee,#34d399)}
+  .panel-title{font-weight:700; margin:0 0 6px 0}
+  .big{font-size:2.4rem; font-weight:900}
+  .good{color:var(--ok)}
+  .warn{color:var(--warn)}
+  .tilegrid{display:grid; gap:8px; justify-content:center}
+  .tile{width:48px; height:48px; display:flex; align-items:center; justify-content:center; background:#0b1225; border:1px solid rgba(255,255,255,0.08); border-radius:10px; font-size:28px; -webkit-user-select:none; -ms-user-select:none; user-select:none}
+  .tile:focus{outline:2px solid var(--accent)}
+  .flash{animation:flash .45s ease-in-out}
+  @keyframes flash{0%{transform:scale(0.95); background:#12223e} 100%{transform:scale(1)}}
+  .qa{display:grid; gap:10px}
+  .opt{padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.1)}
+  .opt:hover{border-color:rgba(255,255,255,0.25)}
+  .sr-only{position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden}
+  .footer{margin-top:18px; font-size:.9rem; color:var(--muted)}
+
+  /* moved from inline styles */
+  .inline-badge{display:inline-block; margin-top:8px;}
+  .mt-8{margin-top:8px;}
+</style>
+</head>
+<body>
+<nav style="position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(6,12,18,.85);backdrop-filter:blur(6px);border-bottom:1px solid rgba(255,255,255,.14);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"><a href="../index.html" style="color:#c6d9ea;text-decoration:none;font-size:12px">&larr; Back to FieldKit</a><span style="color:#8fb2cc;font-size:12px">FieldKit</span></nav>
+<div class="wrap">
+  <header>
+    <h1>Positive IQ Test</h1>
+    <span class="tag">Feel-Good • Fast • Local</span>
+  </header>
+
+  <section id="screen-intro" class="card">
+    <p class="notice">This is a playful, research-inspired mini-assessment. It estimates your strengths without harsh labels. All scores are **positive** and growth-oriented.</p>
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="panel-title">What's inside</div>
+        <ul>
+          <li><b>Memory Spark</b> — repeat a highlighted sequence.</li>
+          <li><b>Odd One Out</b> — spot the different symbol fast.</li>
+          <li><b>Analogy Light</b> — choose the word that best fits.</li>
+        </ul>
+        <p class="notice">Keyboard: <span class="kbd">Enter</span> to confirm, arrows/1-4 for options.</p>
+      </div>
+      <div class="card">
+        <div class="panel-title">Positive Scoring</div>
+        <ul>
+          <li>Baseline: <b>100</b> (you start ahead).</li>
+          <li>Accuracy/Speed add points; no negative penalties.</li>
+          <li>Sub-scores: Pattern, Agility, Verbal, Grit.</li>
+        </ul>
+        <div class="row">
+          <label class="row"><input type="checkbox" id="feelGood"> &nbsp;Enable extra encouragement</label>
+          <label class="row"><input type="checkbox" id="shortMode"> &nbsp;Quick mode (about 3–4 minutes)</label>
+        </div>
+      </div>
+    <div class="row mt-12">
+      <button class="primary" id="startBtn" aria-describedby="startHint">Start</button>
+      <span id="startHint" class="notice">No data leaves your browser.</span>
+    </div>
+    </div>
+  </section>
+
+  <!-- Runtime HUD -->
+    <div class="row space-between">
+      <div class="row">
+        <span class="pill" id="phasePill">Phase</span>
+        <span class="pill" id="timerPill">00:00</span>
+        <span class="pill" id="roundPill">Round 1</span>
+      </div>
+      <div class="row">
+        <span class="pill">Streak <b id="streak">0</b></span>
+        <span class="pill">Correct <b id="correct">0</b></span>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- Memory Spark -->
+  <section id="screen-memory" class="card hidden">
+    <h2>Memory Spark</h2>
+    <p class="notice">Watch the flashing tiles, then click or press their order.</p>
+    <div class="row mt-10">
+      <button id="memReplay">Replay</button>
+      <button id="memSubmit" class="primary">Confirm Sequence</button>
+    </div>
+    </div>
+  </section>
+
+  <!-- Odd One Out -->
+  <section id="screen-odd" class="card hidden">
+    <h2>Odd One Out</h2>
+    <p class="notice">Select the tile that differs by shape or orientation.</p>
+    <div id="oddGrid" class="tilegrid" aria-live="polite"></div>
+  </section>
+
+  <!-- Analogy Light -->
+  <section id="screen-analogies" class="card hidden">
+    <h2>Analogy Light</h2>
+    <div id="qa" class="qa"></div>
+  </section>
+    <div class="grid cols-2">
+      <div class="muted">Positive Score</div>
+      <div id="scoreTotal" class="big">—</div>
+      <div id="scoreBadge" class="pill inline-badge">Calibrating…</div>
+      <div class="pill inline-badge mt-8">Calibrating…</div>
+    </div>
+        <div id="scoreTotal" class="big">—</div>
+        <div id="scoreBadge" class="pill inline-badge">Calibrating…</div>
+        <div id="scoreBadge" class="pill" style="display:inline-block;margin-top:8px">Calibrating…</div>
+      </div>
+      <div class="card">
+        <div>Pattern Insight <span class="muted" id="sPattern">—</span> <div class="bar"><span id="barPattern"></span></div></div>
+        <div class="spacer-8"></div>
+        <div>Cognitive Agility <span class="muted" id="sAgility">—</span> <div class="bar"><span id="barAgility"></span></div></div>
+        <div class="spacer-8"></div>
+        <div>Verbal Reasoning <span class="muted" id="sVerbal">—</span> <div class="bar"><span id="barVerbal"></span></div></div>
+        <div class="spacer-8"></div>
+        <div>Grit / Focus <span class="muted" id="sGrit">—</span> <div class="bar"><span id="barGrit"></span></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="panel-title">Nice takeaways</div>
+      <ul id="takeaways"></ul>
+    </div>
+    <div class="row">
+      <button id="saveJson">Export Result JSON</button>
+      <button id="retry" class="primary">Try Again</button>
+    </div>
+    <div class="footer">Local-only. Best score is saved in your browser.</div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const screen = id => {
+    ['#screen-intro','#hud','#screen-memory','#screen-odd','#screen-analogies','#screen-results']
+      .forEach(s=>$(s).classList.add('hidden'));
+    if(id) $(id).classList.remove('hidden');
+  };
+
+  // State
+  const state = {
+    feelGood:false, quick:false,
+    phase: 'intro',
+    globalStart:0,
+    correct:0, streak:0, totalRounds:0,
+    timeAgg:0, actions:0,
+    patternScore:0, agilityScore:0, verbalScore:0, gritScore:0,
+    best: JSON.parse(localStorage.getItem('positiveIQ_best')||'null')
+  };
+
+  // HUD
+  const updHud=()=> {
+    $('#phasePill').textContent = state.phase.replace(/^./,c=>c.toUpperCase());
+    $('#timerPill').textContent = fmtTime(performance.now()-state.globalStart);
+    $('#roundPill').textContent = `Round ${state.totalRounds}`;
+    $('#correct').textContent = state.correct;
+    $('#streak').textContent = state.streak;
+  };
+  function fmtTime(ms){
+    const s = Math.floor(ms/1000), m = Math.floor(s/60), r = s%60;
+    return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+  }
+  let tickInt=null;
+  function startHud(){
+    clearInterval(tickInt); tickInt=setInterval(updHud, 250);
+    $('#hud').classList.remove('hidden'); updHud();
+  }
+
+  // Intro
+  $('#startBtn').addEventListener('click', startFlow);
+  function startFlow(){
+    state.feelGood = $('#feelGood').checked;
+    state.quick = $('#shortMode').checked;
+    state.phase='memory';
+    state.globalStart=performance.now();
+    state.correct=0; state.streak=0; state.totalRounds=0;
+    state.timeAgg=0; state.actions=0;
+    state.patternScore=0; state.agilityScore=0; state.verbalScore=0; state.gritScore=0;
+    startHud();
+    screen('#screen-memory');
+    startMemory();
+  }
+
+  // ---------- Memory Spark ----------
+  const mem = {
+    size: 3, // 3x3
+    seq:[], input:[],
+    round:0, rounds:()=> state.quick? 3:5,
+    grid:null
+  };
+
+  function startMemory(){
+    state.phase='memory';
+    buildMemGrid();
+    nextMemRound();
+    $('#memReplay').onclick = ()=>flashSeq(true);
+    $('#memSubmit').onclick = submitMem;
+  }
+
+  function buildMemGrid(){
+    const g = $('#memGrid');
+    g.innerHTML=''; mem.grid=g;
+    g.style.gridTemplateColumns = `repeat(${mem.size}, 48px)`;
+    for(let i=0;i<mem.size*mem.size;i++){
+      const b=document.createElement('button');
+      b.className='tile'; b.setAttribute('aria-label',`Cell ${i+1}`);
+      b.textContent = String.fromCharCode(0x2460+i); // ①②③…
+      b.addEventListener('click',()=>{ mem.input.push(i); b.classList.add('flash'); });
+      b.addEventListener('keydown',e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); b.click(); }});
+      g.appendChild(b);
+    }
+  }
+
+  function nextMemRound(){
+    mem.round++;
+    state.totalRounds++; updHud();
+    mem.seq.push(randInt(0, mem.size*mem.size-1));
+    mem.input=[];
+    flashSeq(false);
+  }
+
+  function flashSeq(replay){
+    let i=0;
+    const tiles = mem.grid.querySelectorAll('.tile');
+    const speed = state.quick? 300: 420;
+    const iv=setInterval(()=>{
+      tiles.forEach(t=>t.style.opacity=1);
+      const idx=mem.seq[i];
+      tiles[idx].style.opacity=0.4; tiles[idx].classList.add('flash');
+      setTimeout(()=>tiles[idx].style.opacity=1, speed*0.7);
+      i++;
+      if(i>=mem.seq.length){ clearInterval(iv); }
+    }, speed);
+    if(!replay){ state.actions++; }
+  }
+
+  function submitMem(){
+    const t0=performance.now();
+    // Compare
+    const ok = mem.seq.length===mem.input.length && mem.seq.every((v,i)=>v===mem.input[i]);
+    const dt = performance.now()-t0;
+    state.timeAgg += dt; state.actions++;
+    if(ok){
+      state.correct++; state.streak++;
+      state.patternScore += 8 + Math.max(0, 4 - Math.log2(mem.seq.length)); // diminishing
+      state.agilityScore += 2; // light reward
+      toast(state.feelGood? "Sharp! Memory spark +":"Nice!");
+      if(mem.round < mem.rounds()){
+        nextMemRound();
+      } else {
+        startOdd();
+      }
+    } else {
+      state.streak=0;
+      state.patternScore += Math.max(3, Math.floor(mem.seq.length/2)); // still positive
+      toast("Sequence noted — onto the next!");
+      startOdd();
+    }
+    updHud();
+  }
+
+  // ---------- Odd One Out ----------
+  const odd={
+    round:0, rounds:()=> state.quick? 4:6,
+    grid:null, size:4
+  };
+  function startOdd(){
+    state.phase='odd';
+    screen('#screen-odd');
+    odd.round=0;
+    doOddRound();
+  }
+  function doOddRound(){
+    odd.round++; state.totalRounds++; updHud();
+    const g = $('#oddGrid'); g.innerHTML=''; odd.grid=g;
+    const symbols=['◆','◇','●','○','▲','△','■','□','★','✦'];
+    const base = pick(symbols);
+    const diff = pick(symbols.filter(s=>s!==base));
+    const total = odd.size*odd.size;
+    const oddIdx = randInt(0,total-1);
+    g.style.gridTemplateColumns=`repeat(${odd.size}, 48px)`;
+    for(let i=0;i<total;i++){
+      const b=document.createElement('button');
+      b.className='tile'; b.textContent = (i===oddIdx)?diff:base;
+      b.addEventListener('click', ()=>finishOdd(i===oddIdx));
+      b.addEventListener('keydown', e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); b.click(); }});
+      g.appendChild(b);
+    }
+    odd._start = performance.now();
+  }
+  function finishOdd(correct){
+    const dt = performance.now()-odd._start;
+    state.actions++; state.timeAgg+=dt;
+    if(correct){
+      state.correct++; state.streak++;
+      const speedBonus = dt<1000? 6 : dt<2000? 4 : 2;
+      state.patternScore += 5;
+      state.agilityScore += speedBonus;
+      toast(state.feelGood? "Eagle eyes!":"Good eye!");
+    }else{
+      state.streak=0;
+      state.patternScore += 2; // still positive
+      state.agilityScore += 1;
+      toast("Filed for pattern memory. Next!");
+    }
+    if(odd.round<odd.rounds()) doOddRound(); else startAnalogies();
+  }
+
+  // ---------- Analogy Light ----------
+  const bank = [
+    {q:"Seed : Tree :: Spark : ?", a:["Flame","Ash","Smoke","Forest"], i:0},
+    {q:"Map : Directions :: Recipe : ?", a:["Ingredients","Kitchen","Pan","Chef"], i:0},
+    {q:"Lens : Camera :: Window : ?", a:["House","View","Curtain","Glass"], i:1},
+    {q:"Battery : Power :: Anchor : ?", a:["Ship","Stability","Harbor","Chain"], i:1},
+    {q:"Question : Curiosity :: Puzzle : ?", a:["Confusion","Pieces","Problem","Solution"], i:3},
+    {q:"Bridge : River :: Tunnel : ?", a:["Road","Mountain","Cave","Traffic"], i:1}
+  ];
+  const an = { round:0, rounds:()=> state.quick? 4:6, order:[] };
+
+  function startAnalogies(){
+    state.phase='verbal';
+    screen('#screen-analogies');
+    $('#qa').innerHTML='';
+    an.order = shuffle([...Array(bank.length).keys()]).slice(0, an.rounds());
+    an.round=0;
+    doAnalogy();
+  }
+  function doAnalogy(){
+    an.round++; state.totalRounds++; updHud();
+    const idx = an.order[an.round-1];
+    const item = bank[idx];
+    const qa = $('#qa');
+    qa.innerHTML='';
+    const q = document.createElement('div');
+    q.className='card';
+    q.innerHTML = `<b>Q${an.round}.</b> ${item.q}`;
+    qa.appendChild(q);
+    const opts = document.createElement('div');
+    opts.className='grid'; opts.style.gridTemplateColumns='1fr';
+    item.a.forEach((t,i)=>{
+      const b=document.createElement('button');
+      b.className='opt'; b.textContent = `${i+1}. ${t}`;
+      b.addEventListener('click', ()=>finishAnalogy(i===item.i));
+      b.addEventListener('keydown', e=>{ if(['Enter',' '].includes(e.key)){ e.preventDefault(); b.click(); }});
+      opts.appendChild(b);
+    });
+    qa.appendChild(opts);
+    an._start=performance.now();
+    // Hotkeys 1-4
+    document.onkeydown = (e)=>{
+      if(['1','2','3','4'].includes(e.key)){
+        const i = Number(e.key)-1; finishAnalogy(i===item.i);
+      }
+    };
+  }
+  function finishAnalogy(correct){
+    const dt = performance.now()-an._start;
+    state.actions++; state.timeAgg+=dt;
+    if(correct){
+      state.correct++; state.streak++;
+      const speed = dt<4000? 6: dt<8000? 4: 2;
+      state.verbalScore += 8;
+      state.agilityScore += speed;
+      toast(state.feelGood? "Word wizardry!": "Nice choice!");
+    }else{
+      state.streak=0;
+      state.verbalScore += 4; // still positive
+      state.agilityScore += 1;
+      toast("Logged. Words are a journey.");
+    }
+    if(an.round<an.rounds()) doAnalogy(); else finishAll();
+  }
+
+  // ---------- Finish & Score ----------
+  function finishAll(){
+    clearInterval(tickInt);
+    state.phase='results'; updHud();
+    const duration = (performance.now()-state.globalStart)/1000;
+    // Baseline ensures strictly positive number
+    let total = 100;
+    // Accuracy & speed yield additive points
+    const acc = state.correct / state.totalRounds;
+    const speedFactor = Math.max(0.9, Math.min(1.25, (state.actions>0? (state.timeAgg/state.actions):1200)/1200));
+    // Invert speedFactor to bonus (lower time -> higher)
+    const agility = Math.round(state.agilityScore + (1.25 - speedFactor)*20);
+    const pattern = Math.round(state.patternScore);
+    const verbal  = Math.round(state.verbalScore);
+    const grit    = Math.round(6 + Math.min(20, state.totalRounds*(acc>0.5?1.5:1.0)) + Math.min(10, state.streak*1.2));
+    // Blend
+    total += Math.round(
+      20*acc + 0.4*agility + 0.45*pattern + 0.45*verbal + 0.35*grit
+    );
+    // Gentle uplift if needed
+    if(total<111) total = 111 + Math.floor(Math.random()*7);
+    // Update UI
+    screen('#screen-results');
+    $('#scoreTotal').textContent = total;
+    $('#sPattern').textContent = pattern;
+    $('#sAgility').textContent = agility;
+    $('#sVerbal').textContent  = verbal;
+    $('#sGrit').textContent    = grit;
+    $('#barPattern').style.width = Math.min(100, pattern)/1.1 + '%';
+    $('#barAgility').style.width = Math.min(100, agility)/1.1 + '%';
+    $('#barVerbal').style.width  = Math.min(100, verbal)/1.1 + '%';
+    $('#barGrit').style.width    = Math.min(100, grit)/1.1 + '%';
+    $('#scoreBadge').textContent = badgeFor(total);
+
+    const notes=[];
+    if(acc>0.75) notes.push("High accuracy — you lock onto patterns quickly.");
+    else if(acc>0.55) notes.push("Solid accuracy — steady and reliable.");
+    else notes.push("Exploratory approach — you favor momentum over caution (which is great for creativity).");
+    if(state.streak>=3) notes.push(`Flow moments detected — streak of ${state.streak}.`);
+    if(agility>=verbal && agility>=pattern) notes.push("Fast decision-making under light time pressure.");
+    if(pattern>=agility && pattern>=verbal) notes.push("Strong visual-pattern sensitivity.");
+    if(verbal>=agility && verbal>=pattern) notes.push("Nuanced verbal reasoning and analogy mapping.");
+    if(state.feelGood) notes.push("Growth mindset engaged — you converted every miss into forward energy.");
+    $('#takeaways').innerHTML = notes.map(n=>`<li>${n}</li>`).join('');
+
+    const result = {
+      total, pattern, agility, verbal, grit,
+      correct: state.correct, rounds: state.totalRounds, durationSec: Math.round(duration),
+      ts: new Date().toISOString()
+    };
+    if(!state.best || total > state.best.total){
+      state.best = result;
+      localStorage.setItem('positiveIQ_best', JSON.stringify(result));
+    }
+
+    $('#saveJson').onclick = ()=> {
+      const blob = new Blob([JSON.stringify(result,null,2)], {type:'application/json'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download = `positive-iq-${Date.now()}.json`;
+      a.click();
+    };
+    $('#retry').onclick = ()=>{ screen('#screen-intro'); };
+  }
+
+  function badgeFor(total){
+    if(total>=160) return "Zenith";
+    if(total>=145) return "Luminary";
+    if(total>=130) return "Navigator";
+    if(total>=120) return "Builder";
+    if(total>=111) return "Spark";
+    return "Rising";
+  }
+
+  // Utilities
+  function toast(msg){
+    // lightweight aria-live via HUD
+    $('#phasePill').title = msg;
+  }
+  function randInt(a,b){return (a+Math.floor(Math.random()*(b-a+1)))}
+  function pick(arr){return arr[Math.floor(Math.random()*arr.length)]}
+  function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]] } return arr }
+
+  // Accessibility helpers
+  window.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && state.phase==='intro'){ e.preventDefault(); $('#startBtn').click(); }
+  });
+})();
+</script>
+  <script src="../shared/help-content.js"></script>
+  <script src="../shared/f1-help-nav.js"></script>
+</body>
+</html>

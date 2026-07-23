@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reversi — Learn to Play</title>
+<link rel="stylesheet" href="../shared/suite-nav.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --rv-cell-size: 54px;
+}
+
+body {
+  min-height: 100vh;
+  background: #0d1117;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: Georgia, serif;
+  color: #e0d9c8;
+  padding: 16px 12px 40px;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+h1 {
+  font-size: clamp(22px, 4vw, 38px);
+  letter-spacing: 0.15em;
+  font-weight: normal;
+  color: #c9b882;
+  text-transform: uppercase;
+  text-shadow: 0 0 40px rgba(201,184,130,0.3);
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 11px;
+  color: #444;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 2px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 3px;
+  margin-bottom: 16px;
+}
+.mode-tab {
+  padding: 7px 20px;
+  border: none;
+  background: transparent;
+  color: #555;
+  font-family: Georgia, serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mode-tab.active { background: #1e3a2e; color: #c9b882; }
+.mode-tab:hover:not(.active) { color: #999; }
+
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.control-label {
+  font-size: 10px;
+  color: #555;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+select {
+  background: #111;
+  border: 1px solid #2a2a2a;
+  color: #c0b898;
+  font-family: Georgia, serif;
+  font-size: 12px;
+  padding: 5px 26px 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+select:hover { border-color: #444; }
+
+#scoreboard {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.score-block { text-align: center; }
+.disc-icon { width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 4px; }
+.disc-black { background: radial-gradient(circle at 35% 35%, #555, #111); border: 2px solid #555; box-shadow: inset 0 2px 3px rgba(255,255,255,0.12); }
+.disc-white { background: radial-gradient(circle at 35% 35%, #fff, #ddd); border: 2px solid #aaa; box-shadow: inset 0 -2px 3px rgba(0,0,0,0.15); }
+.score-num { font-size: 20px; font-weight: bold; color: #ccc; }
+.score-label { font-size: 10px; letter-spacing: 0.08em; color: #555; text-transform: uppercase; }
+.score-label span { color: #7aa2c9; font-size: 9px; }
+.vs { font-size: 11px; color: #333; letter-spacing: 0.2em; }
+
+#message {
+  font-size: 13px;
+  letter-spacing: 0.07em;
+  color: #666;
+  min-height: 18px;
+  margin-bottom: 12px;
+  transition: color 0.3s;
+  text-align: center;
+}
+#message.thinking { color: #7aa2c9; }
+#message.gameover { color: #c9b882; }
+#message.human { color: #9cb882; }
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  background: #1e3a2e;
+  padding: 5px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 16px 50px rgba(0,0,0,0.8);
+}
+.cell {
+  width: var(--rv-cell-size);
+  height: var(--rv-cell-size);
+  background: #245233;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: background 0.12s;
+  position: relative;
+}
+.cell.valid { cursor: pointer; }
+.cell.valid:hover { background: #2d6040; }
+.cell.flash { background: #3a6a4a; }
+.cell.highlight-next { background: #2a4055; outline: 2px solid #5a80a0; outline-offset: -2px; }
+
+.piece {
+  width: 80%; height: 80%;
+  border-radius: 50%;
+  position: relative;
+}
+.piece.black { background: radial-gradient(circle at 35% 35%, #555, #111); box-shadow: inset 0 2px 4px rgba(255,255,255,0.15), 0 3px 5px rgba(0,0,0,0.8); }
+.piece.white { background: radial-gradient(circle at 35% 35%, #fff, #ddd); box-shadow: inset 0 -2px 3px rgba(0,0,0,0.15), 0 3px 5px rgba(0,0,0,0.5); }
+.piece.last-move { border: 2px solid #c9b882; }
+.piece.flip-anim { animation: flip 0.35s ease-in-out; }
+
+.hint-dot {
+  width: 28%; height: 28%;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  animation: pulse 1.3s ease-in-out infinite;
+}
+
+#teach-panel {
+  margin-top: 14px;
+  width: 100%;
+  max-width: clamp(320px, 56vw, 480px);
+}
+
+.teach-tip {
+  background: #0d180d;
+  border: 1px solid #1e3a1e;
+  border-left: 3px solid #4a8a4a;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: #5a8a5a;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.teach-log {
+  background: #0a0f0a;
+  border: 1px solid #1e2e1e;
+  border-radius: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.6;
+  scrollbar-width: thin;
+  scrollbar-color: #2a3a2a #0a0f0a;
+}
+.teach-log::-webkit-scrollbar { width: 6px; }
+.teach-log::-webkit-scrollbar-track { background: #0a0f0a; }
+.teach-log::-webkit-scrollbar-thumb { background: #2a3a2a; border-radius: 3px; }
+
+.log-entry {
+  padding: 9px 14px;
+  border-bottom: 1px solid #0f1a0f;
+  animation: fadeIn 0.3s ease;
+}
+.log-entry:last-child { border-bottom: none; }
+
+.log-move {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 3px;
+}
+.log-disc { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+.log-disc.black { background: radial-gradient(circle at 35% 35%, #555, #111); border: 1px solid #444; }
+.log-disc.white { background: radial-gradient(circle at 35% 35%, #fff, #ddd); border: 1px solid #aaa; }
+.log-player { font-weight: bold; }
+.log-player.black-txt { color: #aaa; }
+.log-player.white-txt { color: #ddd; }
+.log-pos { color: #c9b882; font-weight: bold; }
+
+.log-reason {
+  margin-left: 22px;
+  color: #4a7a4a;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.log-reason div { margin-bottom: 2px; }
+
+.concept-tag {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.concept-tag.corner { background: #2a1a0a; border: 1px solid #5a3a1a; color: #c9b882; }
+.concept-tag.mobility { background: #1a1a2e; border: 1px solid #2a2a5a; color: #7a9ac9; }
+.concept-tag.danger { background: #2e1a1a; border: 1px solid #5a2a2a; color: #c97a7a; }
+.concept-tag.edge { background: #1a2a2a; border: 1px solid #2a4a4a; color: #7ac9c9; }
+
+.watch-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn {
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  color: #666;
+  padding: 6px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  font-family: Georgia, serif;
+}
+.btn:hover:not(:disabled) { border-color: #c9b882; color: #c9b882; }
+.btn:disabled { opacity: 0.3; cursor: default; }
+.btn.primary { border-color: #3a5a3a; color: #7ab87a; }
+.btn.primary:hover:not(:disabled) { border-color: #7ab87a; color: #9ad8a0; }
+
+@keyframes pulse { 0%,100%{opacity:0.5;transform:scale(1);}50%{opacity:1;transform:scale(1.4);} }
+@keyframes flip { 0%{transform:scaleX(1);}50%{transform:scaleX(0);}100%{transform:scaleX(1);} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);} }
+</style>
+</head>
+<body data-app-key="reversi">
+
+<nav class="suite-nav" data-suite-nav="1" style="width:min(1100px,100%)">
+  <a href="../index.html">&larr; Back to FieldKit</a>
+  <span>FieldKit</span>
+</nav>
+
+<h1>Reversi</h1>
+<div class="subtitle">Learn &amp; Play</div>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" id="tab-play" onclick="switchMode('play')">&#9654; Play</button>
+  <button class="mode-tab" id="tab-watch" onclick="switchMode('watch')">&#128065; Watch &amp; Learn</button>
+</div>
+
+<!-- Play controls -->
+<div id="play-controls" class="controls">
+  <div class="control-group">
+    <div class="control-label">AI Difficulty</div>
+    <select id="play-level" onchange="newGame()">
+      <option value="0">Rookie — Random</option>
+      <option value="1">Beginner — Greedy</option>
+      <option value="2" selected>Student — 2-move look</option>
+      <option value="3">Intermediate — Positional</option>
+      <option value="4">Advanced — Full strength</option>
+    </select>
+  </div>
+</div>
+
+<!-- Watch controls -->
+<div id="watch-controls" class="controls" style="display:none">
+  <div class="control-group">
+    <div class="control-label">&#9679; Black</div>
+    <select id="watch-black" onchange="resetWatch()">
+      <option value="0">Rookie</option>
+      <option value="1" selected>Beginner</option>
+      <option value="2">Student</option>
+      <option value="3">Intermediate</option>
+      <option value="4">Advanced</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <div class="control-label">&#9675; White</div>
+    <select id="watch-white" onchange="resetWatch()">
+      <option value="0">Rookie</option>
+      <option value="1">Beginner</option>
+      <option value="2" selected>Student</option>
+      <option value="3">Intermediate</option>
+      <option value="4">Advanced</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <div class="control-label">Speed</div>
+    <select id="watch-speed">
+      <option value="2200">Slow</option>
+      <option value="1100" selected>Medium</option>
+      <option value="420">Fast</option>
+      <option value="step">Step-by-step</option>
+    </select>
+  </div>
+</div>
+
+<!-- Scoreboard -->
+<div id="scoreboard">
+  <div class="score-block">
+    <div class="disc-icon disc-black"></div>
+    <div class="score-num" id="black-count">2</div>
+    <div class="score-label" id="black-label">You</div>
+  </div>
+  <div class="vs">vs</div>
+  <div class="score-block">
+    <div class="disc-icon disc-white"></div>
+    <div class="score-num" id="white-count">2</div>
+    <div class="score-label" id="white-label">AI</div>
+  </div>
+</div>
+
+<div id="message" class="human">Your turn — place a black disc</div>
+<div id="board"></div>
+
+<!-- Watch action row -->
+<div id="watch-action" class="watch-controls" style="display:none">
+  <button class="btn primary" id="btn-start" onclick="startWatch()">Start</button>
+  <button class="btn" id="btn-pause" onclick="togglePause()" disabled>Pause</button>
+  <button class="btn" id="btn-step" onclick="stepOnce()" style="display:none">Next Move</button>
+  <button class="btn" onclick="resetWatch()">Reset</button>
+</div>
+
+<!-- Play action row -->
+<div id="play-action" class="watch-controls">
+  <button class="btn" onclick="newGame()">New Game</button>
+</div>
+
+<!-- Teaching panel -->
+<div id="teach-panel" style="display:none">
+  <div class="teach-tip" id="teach-tip">Watch how different skill levels play. Each move is explained.</div>
+  <div class="teach-log" id="teach-log">
+    <div class="log-entry" style="color:#2a4a2a;font-size:11px">Press Start to begin the demonstration...</div>
+  </div>
+</div>
+
+<script>
+const SIZE=8, EMPTY=0, BLACK=1, WHITE=2;
+const DIRS=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const WEIGHTS=[
+  [100,-20,10,5,5,10,-20,100],
+  [-20,-40,-5,-5,-5,-5,-40,-20],
+  [10,-5,5,1,1,5,-5,10],
+  [5,-5,1,0,0,1,-5,5],
+  [5,-5,1,0,0,1,-5,5],
+  [10,-5,5,1,1,5,-5,10],
+  [-20,-40,-5,-5,-5,-5,-40,-20],
+  [100,-20,10,5,5,10,-20,100]
+];
+const LEVEL_NAMES=['Rookie','Beginner','Student','Intermediate','Advanced'];
+const LEVEL_TIPS=[
+  '🎲 Rookie plays randomly — pure chaos. No thinking at all. Even this can surprise you sometimes.',
+  '💡 Beginner is greedy — always grabs the most pieces per move. Feels powerful but backfires: more pieces = more for the opponent to flip back.',
+  '🧩 Student looks 2 moves ahead. Starts recognising traps and consequences. A real step up from greedy.',
+  '♟ Intermediate uses positional strategy and looks 3 moves deep. Corners become a priority.',
+  '🏆 Advanced looks 4 moves ahead with full strategy — corners, edge stability, and mobility all considered.'
+];
+
+function fitBoardToViewport(){
+  const navH = document.querySelector('.suite-nav')?.offsetHeight || 0;
+  const titleH = document.querySelector('h1')?.offsetHeight || 0;
+  const subtitleH = document.querySelector('.subtitle')?.offsetHeight || 0;
+  const tabsH = document.querySelector('.mode-tabs')?.offsetHeight || 0;
+  const controlsH = (document.getElementById('play-controls')?.offsetHeight || 0) + (document.getElementById('watch-controls')?.offsetHeight || 0);
+  const scoreH = document.getElementById('scoreboard')?.offsetHeight || 0;
+  const msgH = document.getElementById('message')?.offsetHeight || 0;
+  const actionH = (document.getElementById('play-action')?.offsetHeight || 0) + (document.getElementById('watch-action')?.offsetHeight || 0);
+  const teachH = mode==='watch' ? Math.min(130, document.getElementById('teach-panel')?.offsetHeight || 0) : 0;
+  const chrome = navH + titleH + subtitleH + tabsH + controlsH + scoreH + msgH + actionH + teachH + 54;
+  const byHeight = Math.max(280, window.innerHeight - chrome);
+  const byWidth = Math.max(280, Math.floor(window.innerWidth * 0.96));
+  const boardEdge = Math.min(byHeight, byWidth, 760);
+  const cell = Math.max(32, Math.min(72, Math.floor((boardEdge - 24) / 8)));
+  document.documentElement.style.setProperty('--rv-cell-size', `${cell}px`);
+}
+
+let board, currentPlayer, gameOver, lastMove;
+let mode='play';
+let watchRunning=false, watchPaused=false, watchTimer=null, stepPending=false;
+const HUMAN=BLACK, AI_P=WHITE;
+
+function opp(p){return p===BLACK?WHITE:BLACK;}
+
+function initBoard(){
+  const b=Array.from({length:SIZE},()=>Array(SIZE).fill(EMPTY));
+  b[3][3]=WHITE;b[3][4]=BLACK;b[4][3]=BLACK;b[4][4]=WHITE;
+  return b;
+}
+
+function getFlips(b,r,c,player){
+  if(b[r][c]!==EMPTY)return[];
+  const flips=[];
+  for(const[dr,dc]of DIRS){
+    let cr=r+dr,cc=c+dc,tmp=[];
+    while(cr>=0&&cr<SIZE&&cc>=0&&cc<SIZE&&b[cr][cc]===opp(player)){tmp.push([cr,cc]);cr+=dr;cc+=dc;}
+    if(tmp.length&&cr>=0&&cr<SIZE&&cc>=0&&cc<SIZE&&b[cr][cc]===player)flips.push(...tmp);
+  }
+  return flips;
+}
+
+function getValidMoves(b,player){
+  const m=[];
+  for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++)if(getFlips(b,r,c,player).length)m.push([r,c]);
+  return m;
+}
+
+function applyMove(b,r,c,player){
+  const nb=b.map(row=>[...row]);
+  getFlips(nb,r,c,player).forEach(([fr,fc])=>nb[fr][fc]=player);
+  nb[r][c]=player;
+  return nb;
+}
+
+function countPieces(b){
+  let black=0,white=0;
+  for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){if(b[r][c]===BLACK)black++;else if(b[r][c]===WHITE)white++;}
+  return{black,white};
+}
+
+// ─── AI ──────────────────────────────────────────────────────────────────────
+function getMove(b,player,level){
+  const moves=getValidMoves(b,player);
+  if(!moves.length)return null;
+  if(level===0)return moves[Math.floor(Math.random()*moves.length)];
+  if(level===1){
+    let best=-1,bm=moves[0];
+    for(const[r,c]of moves){const f=getFlips(b,r,c,player).length;if(f>best){best=f;bm=[r,c];}}
+    return bm;
+  }
+  const depth=level===2?2:level===3?3:4;
+  const useW=level>=3;
+  return mmBest(b,player,depth,useW);
+}
+
+function mmBest(b,player,depth,useW){
+  const moves=getValidMoves(b,player);
+  let best=-Infinity,bm=moves[0];
+  for(const[r,c]of moves){
+    const v=mm(applyMove(b,r,c,player),depth-1,-Infinity,Infinity,false,player,useW);
+    if(v>best){best=v;bm=[r,c];}
+  }
+  return bm;
+}
+
+function mm(b,depth,alpha,beta,maximizing,aiP,useW){
+  const mover=maximizing?aiP:opp(aiP);
+  const moves=getValidMoves(b,mover);
+  if(depth===0||moves.length===0){
+    if(moves.length===0&&getValidMoves(b,opp(mover)).length===0){
+      const{black,white}=countPieces(b);
+      const d=aiP===BLACK?black-white:white-black;
+      return d>0?10000:d<0?-10000:0;
+    }
+    return evalB(b,aiP,useW);
+  }
+  if(maximizing){
+    let best=-Infinity;
+    for(const[r,c]of moves){best=Math.max(best,mm(applyMove(b,r,c,aiP),depth-1,alpha,beta,false,aiP,useW));alpha=Math.max(alpha,best);if(beta<=alpha)break;}
+    return best;
+  }else{
+    let best=Infinity;
+    for(const[r,c]of moves){best=Math.min(best,mm(applyMove(b,r,c,opp(aiP)),depth-1,alpha,beta,true,aiP,useW));beta=Math.min(beta,best);if(beta<=alpha)break;}
+    return best;
+  }
+}
+
+function evalB(b,player,useW){
+  let score=0;
+  if(useW){
+    for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){
+      if(b[r][c]===player)score+=WEIGHTS[r][c];
+      else if(b[r][c]===opp(player))score-=WEIGHTS[r][c];
+    }
+  }else{
+    const{black,white}=countPieces(b);
+    score=player===BLACK?black-white:white-black;
+  }
+  score+=(getValidMoves(b,player).length-getValidMoves(b,opp(player)).length)*(useW?10:3);
+  return score;
+}
+
+// ─── Move Analysis ────────────────────────────────────────────────────────────
+function pos(r,c){return String.fromCharCode(65+c)+(r+1);}
+function isCorner(r,c){return(r===0||r===7)&&(c===0||c===7);}
+function isXSq(r,c){return(r===1||r===6)&&(c===1||c===6);}
+function isEdge(r,c){return r===0||r===7||c===0||c===7;}
+
+function analyzeMove(board,r,c,player,flips,level){
+  const p=pos(r,c);
+  const nb=applyMove(board,r,c,player);
+  const oppB=getValidMoves(board,opp(player)).length;
+  const oppA=getValidMoves(nb,opp(player)).length;
+  const reasons=[];
+
+  if(isCorner(r,c)){
+    reasons.push({tag:'corner',text:`Secures corner ${p} — corners are permanent and can never be flipped for the rest of the game. One of the strongest possible moves.`});
+  } else if(isXSq(r,c)){
+    reasons.push({tag:'danger',text:`X-square at ${p} — this is diagonally adjacent to a corner. Taking it risks handing the opponent an easy path to grab that corner next.`});
+  } else if(isEdge(r,c)){
+    reasons.push({tag:'edge',text:`Edge piece at ${p} — edges are more stable than interior squares and much harder to flip.`});
+  }
+
+  if(flips.length>=5){
+    reasons.push({tag:null,text:`Big capture — flips ${flips.length} pieces at once.`});
+  }
+
+  if(oppA<oppB-2){
+    reasons.push({tag:'mobility',text:`Cuts opponent's moves from ${oppB} down to ${oppA}. Restricting mobility is often more valuable than flipping lots of pieces right now.`});
+  } else if(oppA>oppB+2){
+    reasons.push({tag:null,text:`Opens up the opponent's options from ${oppB} to ${oppA} moves — a downside of this move.`});
+  }
+
+  if(reasons.length===0){
+    const why=level===0?'Random choice.':level===1?`Grabs the most flips available (${flips.length}).`:`Positional — part of a longer plan.`;
+    reasons.push({tag:null,text:`${why} Flips ${flips.length} piece${flips.length!==1?'s':''}.`});
+  }
+  return{pos:p,reasons};
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render(flashFlips,highlightCell){
+  fitBoardToViewport();
+  const el=document.getElementById('board');
+  el.innerHTML='';
+  const validMoves=(!gameOver&&mode==='play'&&currentPlayer===HUMAN)?getValidMoves(board,HUMAN):[];
+  const vSet=new Set(validMoves.map(([r,c])=>`${r},${c}`));
+  const fSet=new Set((flashFlips||[]).map(([r,c])=>`${r},${c}`));
+
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      const cell=document.createElement('div');
+      let cls='cell';
+      if(vSet.has(`${r},${c}`))cls+=' valid';
+      if(fSet.has(`${r},${c}`))cls+=' flash';
+      if(highlightCell&&highlightCell[0]===r&&highlightCell[1]===c)cls+=' highlight-next';
+      cell.className=cls;
+
+      if(board[r][c]!==EMPTY){
+        const piece=document.createElement('div');
+        piece.className='piece '+(board[r][c]===BLACK?'black':'white');
+        if(lastMove&&lastMove[0]===r&&lastMove[1]===c)piece.classList.add('last-move');
+        if(fSet.has(`${r},${c}`))piece.classList.add('flip-anim');
+        cell.appendChild(piece);
+      } else if(vSet.has(`${r},${c}`)){
+        const dot=document.createElement('div');
+        dot.className='hint-dot';
+        cell.appendChild(dot);
+      }
+
+      if(vSet.has(`${r},${c}`))cell.onclick=()=>humanMove(r,c);
+      el.appendChild(cell);
+    }
+  }
+  const{black,white}=countPieces(board);
+  document.getElementById('black-count').textContent=black;
+  document.getElementById('white-count').textContent=white;
+}
+
+function setMsg(txt,cls){const el=document.getElementById('message');el.textContent=txt;el.className=cls||'';}
+
+// ─── Play Mode ────────────────────────────────────────────────────────────────
+function newGame(){
+  clearTimeout(watchTimer);watchRunning=false;watchPaused=false;
+  board=initBoard();currentPlayer=HUMAN;gameOver=false;lastMove=null;
+  const lvl=parseInt(document.getElementById('play-level').value);
+  document.getElementById('white-label').innerHTML='AI <span>'+LEVEL_NAMES[lvl]+'</span>';
+  document.getElementById('black-label').innerHTML='You';
+  setMsg('Your turn — place a black disc','human');
+  render();
+}
+
+function humanMove(r,c){
+  if(gameOver||currentPlayer!==HUMAN||mode!=='play')return;
+  const flips=getFlips(board,r,c,HUMAN);
+  if(!flips.length)return;
+  board=applyMove(board,r,c,HUMAN);lastMove=[r,c];
+  render(flips);
+  if(checkEnd())return;
+  currentPlayer=AI_P;
+  setMsg('AI is thinking…','thinking');
+  setTimeout(doAITurn,55);
+}
+
+function doAITurn(){
+  const lvl=parseInt(document.getElementById('play-level').value);
+  const moves=getValidMoves(board,AI_P);
+  if(!moves.length){
+    if(!getValidMoves(board,HUMAN).length){endGame();return;}
+    setMsg('AI has no moves — your turn!','human');
+    currentPlayer=HUMAN;render();return;
+  }
+  const[r,c]=getMove(board,AI_P,lvl);
+  const flips=getFlips(board,r,c,AI_P);
+  board=applyMove(board,r,c,AI_P);lastMove=[r,c];
+  if(checkEnd()){render(flips);return;}
+  if(!getValidMoves(board,HUMAN).length){
+    setMsg('No moves for you — AI goes again!','thinking');
+    currentPlayer=AI_P;render(flips);setTimeout(doAITurn,600);return;
+  }
+  currentPlayer=HUMAN;setMsg('Your turn','human');render(flips);
+}
+
+function checkEnd(){
+  if(!getValidMoves(board,BLACK).length&&!getValidMoves(board,WHITE).length){endGame();return true;}
+  return false;
+}
+
+function endGame(){
+  const{black,white}=countPieces(board);
+  gameOver=true;
+  if(mode==='play'){
+    if(black>white)setMsg('You win! '+black+'–'+white+' 🎉','gameover');
+    else if(white>black)setMsg('AI wins! '+white+'–'+black+' 🤖','gameover');
+    else setMsg('Tie! '+black+'–'+white,'gameover');
+  }else{
+    const bn=LEVEL_NAMES[parseInt(document.getElementById('watch-black').value)];
+    const wn=LEVEL_NAMES[parseInt(document.getElementById('watch-white').value)];
+    if(black>white)setMsg(bn+' (Black) wins! '+black+'–'+white,'gameover');
+    else if(white>black)setMsg(wn+' (White) wins! '+white+'–'+black,'gameover');
+    else setMsg('Tie! '+black+'–'+white,'gameover');
+    logText('— Game over —');
+    document.getElementById('btn-pause').disabled=true;
+    document.getElementById('btn-step').disabled=true;
+    watchRunning=false;
+  }
+  render();
+}
+
+// ─── Watch Mode ───────────────────────────────────────────────────────────────
+function resetWatch(){
+  clearTimeout(watchTimer);watchRunning=false;watchPaused=false;stepPending=false;
+  board=initBoard();currentPlayer=BLACK;gameOver=false;lastMove=null;
+  document.getElementById('teach-log').innerHTML='<div class="log-entry" style="color:#2a4a2a;font-size:11px">Press Start to begin...</div>';
+  document.getElementById('btn-start').disabled=false;
+  document.getElementById('btn-pause').disabled=true;
+  document.getElementById('btn-pause').textContent='Pause';
+  document.getElementById('btn-step').style.display='none';
+  document.getElementById('btn-step').disabled=false;
+  const bl=parseInt(document.getElementById('watch-black').value);
+  const wl=parseInt(document.getElementById('watch-white').value);
+  document.getElementById('black-label').innerHTML='Black <span>'+LEVEL_NAMES[bl]+'</span>';
+  document.getElementById('white-label').innerHTML='White <span>'+LEVEL_NAMES[wl]+'</span>';
+  document.getElementById('teach-tip').textContent=LEVEL_TIPS[bl]+'\n\n'+LEVEL_TIPS[wl];
+  setMsg('Press Start','');
+  render();
+}
+
+function startWatch(){
+  watchRunning=true;watchPaused=false;stepPending=false;
+  document.getElementById('btn-start').disabled=true;
+  document.getElementById('btn-pause').disabled=false;
+  document.getElementById('btn-pause').textContent='Pause';
+  const spd=document.getElementById('watch-speed').value;
+  if(spd==='step'){
+    document.getElementById('btn-step').style.display='inline-block';
+  }
+  document.getElementById('teach-log').innerHTML='';
+  doWatchTurn();
+}
+
+function togglePause(){
+  if(!watchRunning)return;
+  watchPaused=!watchPaused;
+  document.getElementById('btn-pause').textContent=watchPaused?'Resume':'Pause';
+  if(!watchPaused)doWatchTurn();
+}
+
+function stepOnce(){
+  stepPending=true;
+  doWatchTurn();
+}
+
+function doWatchTurn(){
+  if(!watchRunning||gameOver)return;
+  if(watchPaused)return;
+  const spdVal=document.getElementById('watch-speed').value;
+  const isStep=spdVal==='step';
+  const speed=isStep?0:parseInt(spdVal);
+  if(isStep&&!stepPending)return;
+  stepPending=false;
+
+  const bl=parseInt(document.getElementById('watch-black').value);
+  const wl=parseInt(document.getElementById('watch-white').value);
+  const level=currentPlayer===BLACK?bl:wl;
+  const moves=getValidMoves(board,currentPlayer);
+
+  if(!moves.length){
+    if(!getValidMoves(board,opp(currentPlayer)).length){endGame();return;}
+    const nm=currentPlayer===BLACK?'Black':'White';
+    logText(nm+' has no valid moves — turn skipped.');
+    currentPlayer=opp(currentPlayer);
+    if(!isStep)watchTimer=setTimeout(doWatchTurn,800);
+    return;
+  }
+
+  const[r,c]=getMove(board,currentPlayer,level);
+  const flips=getFlips(board,r,c,currentPlayer);
+  const analysis=analyzeMove(board,r,c,currentPlayer,flips,level);
+  const playerName=currentPlayer===BLACK?'⚫ Black':'⚪ White';
+
+  // Highlight the chosen cell before placing
+  render([],[r,c]);
+  setMsg(playerName+' chooses '+analysis.pos+'…','thinking');
+
+  const placeDelay=isStep?80:Math.min(speed*0.4,700);
+  setTimeout(()=>{
+    if(!watchRunning)return;
+    board=applyMove(board,r,c,currentPlayer);
+    lastMove=[r,c];
+    render(flips);
+    logMove(currentPlayer,analysis,flips,level);
+
+    if(!getValidMoves(board,BLACK).length&&!getValidMoves(board,WHITE).length){endGame();return;}
+    currentPlayer=opp(currentPlayer);
+
+    if(!isStep){
+      watchTimer=setTimeout(doWatchTurn,speed);
+    }
+  },placeDelay);
+}
+
+// ─── Log ──────────────────────────────────────────────────────────────────────
+function logText(txt){
+  const log=document.getElementById('teach-log');
+  const e=document.createElement('div');
+  e.className='log-entry';
+  e.style.cssText='color:#3a5a3a;font-size:11px';
+  e.textContent=txt;
+  log.appendChild(e);
+  log.scrollTop=log.scrollHeight;
+}
+
+function logMove(player,analysis,flips,level){
+  const log=document.getElementById('teach-log');
+  const entry=document.createElement('div');
+  entry.className='log-entry';
+
+  const mr=document.createElement('div');
+  mr.className='log-move';
+  const disc=document.createElement('div');
+  disc.className='log-disc '+(player===BLACK?'black':'white');
+  const info=document.createElement('div');
+  const tcls=player===BLACK?'black-txt':'white-txt';
+  info.innerHTML='<span class="log-player '+tcls+'">'+(player===BLACK?'Black':'White')+'</span> &rarr; <span class="log-pos">'+analysis.pos+'</span> <span style="color:#3a5a3a;font-size:11px">(flips '+flips.length+')</span>';
+  mr.appendChild(disc);mr.appendChild(info);
+  entry.appendChild(mr);
+
+  if(analysis.reasons.length){
+    const rd=document.createElement('div');
+    rd.className='log-reason';
+    analysis.reasons.forEach(({tag,text})=>{
+      const line=document.createElement('div');
+      if(tag){
+        const badge=document.createElement('span');
+        badge.className='concept-tag '+tag;
+        badge.textContent=tag;
+        line.appendChild(badge);
+      }
+      line.appendChild(document.createTextNode(text));
+      rd.appendChild(line);
+    });
+    entry.appendChild(rd);
+  }
+
+  log.appendChild(entry);
+  log.scrollTop=log.scrollHeight;
+}
+
+// ─── Mode Switch ──────────────────────────────────────────────────────────────
+function switchMode(m){
+  clearTimeout(watchTimer);watchRunning=false;watchPaused=false;
+  mode=m;
+  document.getElementById('tab-play').className='mode-tab'+(m==='play'?' active':'');
+  document.getElementById('tab-watch').className='mode-tab'+(m==='watch'?' active':'');
+  document.getElementById('play-controls').style.display=m==='play'?'flex':'none';
+  document.getElementById('watch-controls').style.display=m==='watch'?'flex':'none';
+  document.getElementById('play-action').style.display=m==='play'?'flex':'none';
+  document.getElementById('watch-action').style.display=m==='watch'?'flex':'none';
+  document.getElementById('teach-panel').style.display=m==='watch'?'block':'none';
+  if(m==='play')newGame();
+  else resetWatch();
+  fitBoardToViewport();
+}
+
+window.addEventListener('resize', fitBoardToViewport);
+
+newGame();
+fitBoardToViewport();
+</script>
+<script src="../shared/help-content.js"></script>
+<script src="../shared/f1-help-nav.js"></script>
+</body>
+</html>

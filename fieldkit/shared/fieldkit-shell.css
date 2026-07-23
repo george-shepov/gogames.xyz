@@ -1,0 +1,221 @@
+:root {
+  --fk-bg: #09090b;
+  --fk-surface: #111318;
+  --fk-surface-2: #181b22;
+  --fk-border: rgba(255,255,255,.10);
+  --fk-text: #f4f4f5;
+  --fk-muted: #a1a1aa;
+  --fk-accent: #f59e0b;
+  --fk-success: #22c55e;
+  --fk-danger: #ef4444;
+  --fk-radius: 14px;
+  --fk-shadow: 0 16px 50px rgba(0,0,0,.28);
+  --fk-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html { color-scheme: dark; }
+
+body.fieldkit-app-shell {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--fk-text);
+  font-family: var(--fk-font);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245,158,11,.08), transparent 30rem),
+    radial-gradient(circle at 88% 4%, rgba(99,102,241,.10), transparent 32rem),
+    linear-gradient(180deg, #09090b, #0d0e12 55%, #09090b);
+}
+
+body.fieldkit-app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: .14;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.fk-shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 10px clamp(14px,3vw,28px);
+  border-bottom: 1px solid var(--fk-border);
+  background: rgba(9,9,11,.82);
+  backdrop-filter: blur(16px) saturate(135%);
+  box-shadow: 0 8px 30px rgba(0,0,0,.18);
+}
+
+.fk-shell-left,
+.fk-shell-right,
+.fk-shell-brand,
+.fk-shell-status {
+  display: flex;
+  align-items: center;
+}
+
+.fk-shell-left { min-width: 0; gap: 12px; }
+.fk-shell-right { gap: 8px; }
+.fk-shell-brand { min-width: 0; gap: 10px; }
+.fk-shell-status { gap: 7px; }
+
+.fk-shell-logo {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  font-weight: 900;
+  letter-spacing: -.06em;
+  color: #111;
+  background: linear-gradient(145deg, #fbbf24, #f59e0b 55%, #d97706);
+  box-shadow: inset 0 1px rgba(255,255,255,.45), 0 7px 22px rgba(245,158,11,.22);
+}
+
+.fk-shell-titles { min-width: 0; }
+.fk-shell-product {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: var(--fk-muted);
+  line-height: 1.1;
+}
+.fk-shell-app {
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -.015em;
+}
+
+.fk-shell-button,
+.fk-shell-link {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--fk-border);
+  border-radius: 10px;
+  color: var(--fk-text);
+  background: rgba(255,255,255,.045);
+  text-decoration: none;
+  font: 650 .86rem/1 var(--fk-font);
+  cursor: pointer;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+}
+.fk-shell-button:hover,
+.fk-shell-link:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.085);
+  border-color: rgba(255,255,255,.18);
+}
+.fk-shell-link:focus-visible,
+.fk-shell-button:focus-visible {
+  outline: 3px solid rgba(245,158,11,.35);
+  outline-offset: 2px;
+}
+
+.fk-shell-status {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--fk-border);
+  border-radius: 999px;
+  color: var(--fk-muted);
+  background: rgba(255,255,255,.035);
+  font-size: .76rem;
+  font-weight: 750;
+  letter-spacing: .035em;
+  white-space: nowrap;
+}
+.fk-shell-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fk-success);
+  box-shadow: 0 0 0 4px rgba(34,197,94,.12);
+}
+.fk-shell-status.is-offline .fk-shell-status-dot {
+  background: var(--fk-accent);
+  box-shadow: 0 0 0 4px rgba(245,158,11,.14);
+}
+
+body.fieldkit-app-shell > main,
+body.fieldkit-app-shell > .container,
+body.fieldkit-app-shell > #app,
+body.fieldkit-app-shell > .app,
+body.fieldkit-app-shell > .wrapper {
+  width: min(1180px, calc(100% - 28px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body.fieldkit-app-shell button,
+body.fieldkit-app-shell input,
+body.fieldkit-app-shell select,
+body.fieldkit-app-shell textarea {
+  font-family: var(--fk-font);
+}
+
+body.fieldkit-app-shell button:not(.fk-shell-button) {
+  border-radius: 10px;
+}
+
+body.fieldkit-app-shell input,
+body.fieldkit-app-shell select,
+body.fieldkit-app-shell textarea {
+  border-radius: 10px;
+}
+
+body.fieldkit-app-shell .card,
+body.fieldkit-app-shell .panel,
+body.fieldkit-app-shell .section,
+body.fieldkit-app-shell .widget {
+  border-color: var(--fk-border);
+}
+
+.fk-shell-toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 10000;
+  max-width: min(360px, calc(100vw - 36px));
+  padding: 12px 14px;
+  border: 1px solid var(--fk-border);
+  border-radius: 12px;
+  background: rgba(17,19,24,.96);
+  box-shadow: var(--fk-shadow);
+  color: var(--fk-text);
+  font-size: .88rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: .2s ease;
+}
+.fk-shell-toast.is-visible { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 700px) {
+  .fk-shell-header { grid-template-columns: 1fr; gap: 8px; }
+  .fk-shell-right { justify-content: space-between; }
+  .fk-shell-link span { display: none; }
+  .fk-shell-status { min-height: 34px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fk-shell-button,
+  .fk-shell-link,
+  .fk-shell-toast { transition: none; }
+}

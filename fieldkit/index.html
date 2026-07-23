@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="shared/icons/tictak-icon-192.png">
+  <link rel="apple-touch-icon" href="shared/icons/tictak-icon-512.png">
+  <link rel="stylesheet" href="shared/shadcn.css">
+  <link rel="stylesheet" href="shared/launcher-explorer.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <title>FieldKit</title>
+  <style>
+    body {
+      min-height: 100vh;
+      padding: 24px;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(244, 244, 245, 0.05) 0%, rgba(244, 244, 245, 0) 34%),
+        radial-gradient(circle at 88% 0%, rgba(99, 102, 241, 0.12) 0%, rgba(99, 102, 241, 0) 40%),
+        linear-gradient(180deg, #09090b 0%, #0d0d10 100%);
+    }
+    .container { max-width: 1040px; margin: 0 auto; }
+    
+    .header {
+      text-align: center;
+      padding: 48px 24px;
+      margin-bottom: 24px;
+    }
+    .header h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 12px;
+    }
+    .header p { color: var(--muted-foreground); font-size: 1.125rem; }
+
+    .launcher-controls {
+      margin-bottom: 24px;
+      padding: 16px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .category {
+      margin-bottom: 20px;
+      border: 1px solid hsl(var(--border));
+      border-radius: var(--radius);
+      background-color: hsl(var(--card) / 0.5);
+      backdrop-filter: blur(4px);
+      overflow: hidden;
+    }
+    .category-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .category-header:hover { background: hsl(var(--accent)); }
+    .category-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .category-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: hsl(var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: hsl(var(--foreground));
+    }
+    
+    .app-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-top: 1px solid hsl(var(--border));
+      transition: background 0.2s;
+      text-decoration: none;
+      color: inherit;
+    }
+    .app-item:hover { background: hsl(var(--accent) / 0.5); }
+    .app-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .app-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: hsl(var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .app-icon img {
+      width: 24px;
+      height: 24px;
+      filter: brightness(0) invert(1);
+    }
+    
+    .app-name { font-weight: 600; font-size: 1rem; }
+    .app-desc { font-size: 0.875rem; color: hsl(var(--muted-foreground)); }
+
+    /* Custom overrides for shadcn look */
+    .badge-connectivity {
+      font-size: 10px;
+      padding: 2px 8px;
+      letter-spacing: 0.05em;
+    }
+    
+    .help-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      padding: 20px;
+      z-index: 100;
+    }
+    .help-overlay.open { display: flex; justify-content: center; align-items: center; }
+    .help-dialog {
+      width: min(800px, 100%);
+      max-height: 90vh;
+      overflow: auto;
+    }
+
+    @media (max-width: 640px) {
+      .app-desc { display: none; }
+      .launcher-controls { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>FieldKit</h1>
+      <p>Offline-first lobby for tools, training, and field workflows</p>
+      <div class="header-tools flex items-center justify-center gap-2 m-b-4" style="margin-top: 24px;">
+        <button id="openHelpBtn" class="s-btn s-btn-outline" type="button"><i data-lucide="help-circle" size="18"></i> Help</button>
+        <button id="installAppBtn" class="s-btn s-btn-primary" type="button"><i data-lucide="download" size="18"></i> Install</button>
+        <button id="signOutBtn" class="s-btn s-btn-outline" type="button" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);"><i data-lucide="log-out" size="18"></i> Sign Out</button>
+      </div>
+      <div class="flex items-center justify-center gap-2 text-muted" style="font-size: 0.875rem;">
+        <span>Press <kbd class="s-badge s-badge-outline" style="border-radius: 4px; padding: 0 4px;">F1</kbd> anywhere</span>
+        <span id="installHint"></span>
+      </div>
+    </div>
+    
+    <div class="launcher-controls s-card" aria-label="Launcher controls">
+      <div class="flex items-center gap-4 flex-wrap">
+        <div class="flex items-center gap-2">
+          <label class="text-muted font-semibold" style="font-size: 0.75rem; text-transform: uppercase;">View</label>
+          <select id="sortModeSelect" class="s-select" style="width: auto;">
+            <option value="categories">By Category</option>
+            <option value="az">A-Z</option>
+            <option value="za">Z-A</option>
+            <option value="recent">Most Recent</option>
+            <option value="favorites">Favorites Only</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-muted font-semibold" style="font-size: 0.75rem; text-transform: uppercase;">Connectivity</label>
+          <select id="connectivityFilterSelect" class="s-select" style="width: auto;">
+            <option value="all">All</option>
+            <option value="airplane">Airplane Mode</option>
+            <option value="wifi">Wi-Fi / Cell</option>
+          </select>
+        </div>
+        <button id="clearRecentBtn" class="s-btn s-btn-ghost s-btn-sm" type="button">Clear Recent</button>
+      </div>
+    </div>
+
+    <div id="content">
+      <div class="loading flex flex-direction-column items-center justify-center p-4" style="padding: 100px 0;">
+        <div class="spinner m-b-4"></div>
+        <p class="text-muted">Scanning for apps...</p>
+      </div>
+    </div>
+  </div>
+  
+  <div id="helpOverlay" class="help-overlay" aria-hidden="true">
+    <div class="help-dialog s-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="s-card-header flex-direction-row justify-between items-center" style="border-bottom: 1px solid hsl(var(--border));">
+        <div>
+          <h2 id="helpTitle" class="s-card-title">Suite Help</h2>
+          <p class="s-card-description">Main features and scenarios for each app</p>
+        </div>
+        <button id="closeHelpBtn" class="s-btn s-btn-ghost s-btn-icon" type="button" aria-label="Close help"><i data-lucide="x"></i></button>
+      </div>
+      <div id="helpBody" class="help-body" style="padding: 20px;"></div>
+    </div>
+  </div>
+
+  <script src="./shared/privacy-mode.js"></script>
+  <script src="./shared/pwa-init.js"></script>
+  <script src="./shared/global-auth.js"></script>
+  <script>
+    const APP_REGISTRY = {
+      finance: {
+        title: '🧾 Money & Ops',
+        icon: 'calculator.svg',
+        apps: {
+          'gigtax': { name: 'GigTax', desc: '1099 tax calculator', icon: 'calculator.svg' },
+          'receipt-tracker': { name: 'Receipt Tracker', desc: 'Expense tracking', icon: 'receipt-text.svg' },
+          'inventory': { name: 'Inventory Manager', desc: 'Stock + software offers + GitHub intake', icon: 'package.svg' }
+        }
+      },
+      legal: {
+        title: '⚖️ Legal & Records',
+        icon: 'shield-alert.svg',
+        apps: {
+          'docketpro': { name: 'DocketPro', desc: 'Legal docket manager', icon: 'folder-kanban.svg' },
+          'legal-library': { name: 'Legal Library', desc: 'Offline refs + import/search docs', icon: 'library.svg' },
+          'authority-assistant': {
+            name: 'Legal Assistant',
+            desc: 'Consent gate + voice clips + emergency alerts',
+            icon: 'shield-alert.svg',
+            offline: 'hybrid'
+          }
+        }
+      },
+      productivity: {
+        title: '📈 Execution',
+        icon: 'kanban.svg',
+        apps: {
+          'pomodoro': { name: 'Pomodoro Timer', desc: 'Focus sessions with audio', icon: 'timer.svg' },
+          'kanban': { name: 'Kanban Board', desc: 'Visual task management', icon: 'kanban.svg' },
+          'time-tracker': { name: 'Time Tracker', desc: 'Activity logging', icon: 'clock.svg' },
+          'habit-tracker': { name: 'Habit Tracker', desc: 'Build better habits', icon: 'check-circle.svg' },
+          'snippet-board': { name: 'Snippet Board', desc: 'Code snippets', icon: 'code-2.svg' }
+        }
+      },
+      field: {
+        title: '🩺 Field & Safety',
+        icon: 'briefcase-medical.svg',
+        apps: {
+          'convict_conditioning': {
+            name: 'Convict Conditioning',
+            desc: 'Bodyweight progression guide + reps/sets tracker',
+            icon: 'activity.svg'
+          },
+          'outdoor-kit': {
+            name: 'Outdoor Kit',
+            desc: 'Compass, sun, SOS, chat, scientific calc',
+            icon: 'compass.svg',
+            offline: 'hybrid'
+          },
+          'field-checkin': {
+            name: 'Field Check-In',
+            desc: 'Registration + emergency heartbeat',
+            icon: 'map-pin.svg',
+            offline: 'hybrid'
+          },
+          'cns-tap-test': { name: 'CNS Tap Test', desc: 'Readiness + load guidance', icon: 'activity.svg' },
+          'first-aid': { name: 'First Aid & CPR', desc: 'Offline emergency guide', icon: 'briefcase-medical.svg' }
+        }
+      },
+      education: {
+        title: '🎓 Training Lab',
+        icon: 'terminal.svg',
+        apps: {
+          'linux-trainer': { name: 'Linux Trainer', desc: '163 terminal questions', icon: 'terminal.svg' },
+          'js-trainer': { name: 'JavaScript Trainer', desc: 'Live REPL', icon: 'javascript.svg' },
+          'math-trainer': { name: 'Math Trainer', desc: 'Practice drills', icon: 'calculator.svg' },
+          'quiz-builder': { name: 'Quiz Builder', desc: 'Build and take custom quizzes', icon: 'circle-help.svg' },
+          'drivers-license': { name: 'Driver License Study', desc: 'Digest-driven permit prep with extended card bank', icon: 'id-card.svg' },
+          'music-trainer': { name: 'Music Theory', desc: 'Ear training', icon: 'music-2.svg' },
+          'midi-note-helper': { name: 'MIDI Note Helper', desc: 'Map MIDI numbers to notes/octaves', icon: 'piano.svg' }
+        }
+      },
+      media: {
+        title: '🎬 Media & Capture',
+        icon: 'camera.svg',
+        apps: {
+          'privacy-camera': {
+            name: 'Privacy Camera',
+            desc: 'In-memory photo capture',
+            icon: 'camera.svg',
+            offline: 'hybrid'
+          },
+          'privacy-recorder': {
+            name: 'Privacy Recorder',
+            desc: 'In-memory video recorder',
+            icon: 'video.svg',
+            offline: 'hybrid'
+          },
+          'audio-notes': {
+            name: 'Audio Notes Recorder',
+            desc: 'Voice notes + optional sync',
+            icon: 'mic.svg',
+            offline: 'hybrid'
+          },
+          'music-player': { name: 'Music Player', desc: 'Offline local audio player', icon: 'list-music.svg' },
+          'music-studio': { name: 'Music Studio', desc: 'Piano, drums, and music theory', icon: 'piano.svg' },
+          'image-rater': {
+            name: 'Image Rater Lab',
+            desc: 'Rate images + learn preferences',
+            icon: 'image.svg',
+            offline: 'hybrid'
+          },
+          'accent-speaker': { name: 'Accent Voice Lab', desc: 'Style voices + phrase playback', icon: 'volume-2.svg' }
+        }
+      },
+      business: {
+        title: '🤝 Customer Ops',
+        icon: 'users.svg',
+        apps: {
+          'employee-skills': { name: 'Employee Skills', desc: 'Skills matrix', icon: 'users.svg' },
+          'acronym-list': { name: 'Acronym List', desc: 'Corporate acronyms', icon: 'languages.svg' },
+          'wishlist': {
+            name: 'Wishlist Studio',
+            desc: 'Request custom apps/features',
+            icon: 'lightbulb.svg',
+            offline: 'hybrid'
+          },
+          'support': { name: 'Support Desk', desc: 'Ticket queue + support intake', icon: 'headset.svg', offline: 'hybrid' }
+        }
+      },
+      communications: {
+        title: '📡 Communications',
+        icon: 'radio.svg',
+        apps: {
+          'light-messenger': { name: 'Light Messenger', desc: 'Offline flash messaging', icon: 'radio.svg' }
+        }
+      },
+      tools: {
+        title: '🧰 Tools',
+        icon: 'settings-2.svg',
+        apps: {
+          'profile': { name: 'User Profile', desc: 'Global username/password manager', icon: 'id-card.svg' },
+          'clock': { name: 'Clock', desc: 'Alarm, timer, stopwatch', icon: 'alarm-clock.svg' },
+          'ui-tweaker': { name: 'UI Tweaker', desc: 'Save CSS tweaks per app/path', icon: 'settings-2.svg' }
+          ,'whiteboard': { name: 'Whiteboard', desc: 'Draw, diagram, and save boards locally', icon: 'pen-tool.svg' }
+          ,'markdown-slides': { name: 'Markdown Slides', desc: 'Build presentations from Markdown', icon: 'presentation.svg' }
+          ,'qr-generator': { name: 'QR Generator', desc: 'Create shareable QR codes', icon: 'qr-code.svg' }
+          ,'chatgpt-viewer': { name: 'ChatGPT Viewer', desc: 'Browse ChatGPT exports privately', icon: 'message-square.svg' }
+          ,'opb': { name: 'Online Poll Board', desc: 'Create polls and export results locally', icon: 'bar-chart-3.svg' }
+        }
+      },
+      games: {
+        title: '🧠 Drills & Games',
+        icon: 'trophy.svg',
+        apps: {
+          'chronoquest': { name: 'ChronoQuest', desc: 'Race the clock and master global GMT offsets', icon: 'clock.svg', free: true, path: 'games/chronoquest.html' },
+          'game-academy': { name: 'Game Academy', desc: 'Chess & Checkers — Play & Learn', icon: 'trophy.svg', free: true, path: 'games/game-academy.html' },
+          'reversi': { name: 'Reversi', desc: 'Classic disc-flipping strategy game', icon: 'circle-check-big.svg', free: true, path: 'games/reversi.html' },
+          'battleship': { name: 'Battleship', desc: 'Naval strategy board game', icon: 'ship.svg', free: true },
+          'positive-iq': { name: 'Positive IQ Test', desc: 'Cognitive challenge set', icon: 'brain.svg', free: true },
+          'math-raindrops': { name: 'Math Raindrops', desc: 'Adaptive mental math game', icon: 'cloud-rain.svg', free: true },
+          'tetris': { name: 'Block Drop', desc: 'Modern offline falling-block challenge', icon: 'gamepad-2.svg', free: true },
+          'tic-tac-toe': { name: 'Tic-Tac-Toe', desc: 'Classic strategy', icon: 'grid-3x3.svg', free: true },
+          'snake': { name: 'Snake', desc: 'Classic arcade', icon: 'gamepad-2.svg', free: true },
+          'pattern-mirror': { name: 'Pattern Mirror', desc: 'Memory challenge', icon: 'layout-dashboard.svg', free: true },
+          'odd-one-out': { name: 'Odd One Out', desc: 'Logic puzzle', icon: 'target.svg', free: true }
+        }
+      }
+    };
+    const APP_NAV_VERSION = '2026.07.22.1';
+    const APP_HELP = {
+      'gigtax': {
+        feature: 'Estimate self-employment taxes from 1099 income and deductions.',
+        scenario: 'Use before quarterly payments or year-end planning.'
+      },
+      'receipt-tracker': {
+        feature: 'Store receipts via OCR import or manual entry (name/amount or photo), with mobile quick-add camera button, plus classify/filter/export records.',
+        scenario: 'Use for quick manual bookkeeping, one-tap photo capture from phone, and audit preparation.'
+      },
+      'docketpro': {
+        feature: 'Track legal matters, deadlines, and status updates in one view.',
+        scenario: 'Use for daily case review and court date management.'
+      },
+      'legal-library': {
+        feature: 'Keep built-in legal references plus imported .pdf/.epub/.md/.txt docs with full-text search, pin, and recent stress-mode access.',
+        scenario: 'Use as your standalone legal reference shelf before or during stressful encounters.'
+      },
+      'inventory': {
+        feature: 'Track stock and software offerings (modules/packages/customizations) with GitHub issue handoff from support/wishlist intake.',
+        scenario: 'Use as your pre-sales catalog plus build pipeline bridge to paid customization work.'
+      },
+      'pomodoro': {
+        feature: 'Run focus cycles with configurable timers and stats.',
+        scenario: 'Use for deep-work blocks and energy pacing.'
+      },
+      'kanban': {
+        feature: 'Organize tasks across Todo/Doing/Done with fast edits.',
+        scenario: 'Use for sprint planning and daily execution tracking.'
+      },
+      'time-tracker': {
+        feature: 'Log activity sessions and export your work timeline.',
+        scenario: 'Use for invoicing, utilization checks, or retrospectives.'
+      },
+      'habit-tracker': {
+        feature: 'Track recurring habits and completion streaks.',
+        scenario: 'Use for personal routines and behavior change programs.'
+      },
+      'snippet-board': {
+        feature: 'Store, tag, and search reusable code snippets.',
+        scenario: 'Use while coding to avoid rewriting common patterns.'
+      },
+      'meal-tracker': {
+        feature: 'Record meals and nutrition history.',
+        scenario: 'Use for diet monitoring and weekly food review.'
+      },
+      'cns-tap-test': {
+        feature: 'Timed tap readiness test with rolling baseline and training call.',
+        scenario: 'Use pre-workout to decide heavy, maintain, or recover day.'
+      },
+      'convict_conditioning': {
+        feature: 'Progressive bodyweight strength guide with movement-level cues and an embedded training source PDF.',
+        scenario: 'Use each session to log sets/reps per movement and track progression over time.'
+      },
+      'first-aid': {
+        feature: 'Offline CPR and first-aid quick reference with compression coach timer/metronome.',
+        scenario: 'Use as an emergency refresher when off-grid or under stress.'
+      },
+      'linux-trainer': {
+        feature: 'Terminal command drills with module quizzes, hints, and review mode.',
+        scenario: 'Use for Linux interview prep and command muscle memory.'
+      },
+      'js-trainer': {
+        feature: 'JavaScript learning modules plus a live REPL trainer.',
+        scenario: 'Use for syntax practice and quick concept checks.'
+      },
+      'math-trainer': {
+        feature: 'Timed arithmetic and practice drills with score feedback.',
+        scenario: 'Use for daily warmups and foundational skill sharpening.'
+      },
+      'quiz-builder': {
+        feature: 'Create interactive quizzes and track answers locally.',
+        scenario: 'Use for self-study, interview prep, or team assessments.'
+      },
+      'music-studio': {
+        feature: 'Practice piano, drums, MIDI, and music theory in one offline workspace.',
+        scenario: 'Use for focused music practice without a connected service.'
+      },
+      'whiteboard': {
+        feature: 'Sketch freely, add diagram shapes and labels, and export boards.',
+        scenario: 'Use for planning flows, architecture, or quick visual notes.'
+      },
+      'markdown-slides': {
+        feature: 'Turn Markdown decks into navigable presentations.',
+        scenario: 'Use for fast technical presentations or offline workshops.'
+      },
+      'qr-generator': {
+        feature: 'Generate QR codes for text and links.',
+        scenario: 'Use for quick device-to-device sharing or printed materials.'
+      },
+      'chatgpt-viewer': {
+        feature: 'Import and search ChatGPT conversation exports locally.',
+        scenario: 'Use for private research, reference, and conversation handoff.'
+      },
+      'opb': {
+        feature: 'Create poll boards, collect local votes, and export results.',
+        scenario: 'Use for workshops, team decisions, or lightweight voting.'
+      },
+      'drivers-license': {
+        feature: 'Driving digest in 6 languages with an expanded ~80-card Q&A + flashcard bank.',
+        scenario: 'Use for permit prep or repurpose for any study topic.'
+      },
+      'music-trainer': {
+        feature: 'Ear training, rhythm, and theory exercises.',
+        scenario: 'Use for structured instrument practice sessions.'
+      },
+      'midi-note-helper': {
+        feature: 'Translate MIDI note numbers to note names/octaves and back with frequency reference.',
+        scenario: 'Use while practicing piano/MIDI to quickly decode keys like 24/36/48/60/72.'
+      },
+      'quiz-builder': {
+        feature: 'Build custom quizzes from your own question banks.',
+        scenario: 'Use for team assessments or self-study materials.'
+      },
+      'online-academy': {
+        feature: 'Course-style learning paths and structured lessons.',
+        scenario: 'Use for guided training programs.'
+      },
+      'employee-skills': {
+        feature: 'Visualize skill matrices and compare team capability levels.',
+        scenario: 'Use for staffing decisions and growth planning.'
+      },
+      'acronym-list': {
+        feature: 'Maintain acronym glossary with quiz mode.',
+        scenario: 'Use for onboarding and domain-language fluency.'
+      },
+      'wishlist': {
+        feature: 'Capture feature requests, budget/timeline targets, and submit to server queue for fast custom builds.',
+        scenario: 'Use as product intake from customers who want tailored apps in days, not months.'
+      },
+      'support': {
+        feature: 'Create support tickets with repro steps and submit to backend queue or keep local offline backlog.',
+        scenario: 'Use as built-in customer support intake without requiring Discord.'
+      },
+      'clock': {
+        feature: 'Use local clock with loud alarm, full-screen red alert, plus countdown timer and stopwatch with lap list.',
+        scenario: 'Use for wakeups, focus intervals, workouts, and timed drills where visual-only alerts are not enough.'
+      },
+      'outdoor-kit': {
+        feature: 'Offline navigation with sun times, tap-map distance, SOS signaling, peer chat, and scientific calculator plus optional online AI.',
+        scenario: 'Use as a field-ready utility hub that still works without network.'
+      },
+      'field-checkin': {
+        feature: 'Register app version + emergency contact, then send online heartbeat updates to your VPS/cloud API.',
+        scenario: 'Use before and during field trips so your server has latest status and route notes.'
+      },
+      'privacy-camera': {
+        feature: 'Capture still photos in-memory with online pulse and queued cloud sync when connection returns.',
+        scenario: 'Use camera without automatic gallery writes, then sync intentionally to your VPS/cloud.'
+      },
+      'privacy-recorder': {
+        feature: 'Record video clips in-memory with online pulse and queued cloud sync when connection returns.',
+        scenario: 'Use privacy-first recording where auto-save is minimized but remote sync is still available.'
+      },
+      'accent-speaker': {
+        feature: 'Speak phrases with selectable accent-style presets using browser voices and rate/pitch control.',
+        scenario: 'Use for language play, tone testing, roleplay, or situational phrase practice.'
+      },
+      'authority-assistant': {
+        feature: 'Run a consent-gated pullover assistant with large speak controls, optional pre-recorded natural voice clips, and incident alerts.',
+        scenario: 'Use during traffic-stop or authority encounters to communicate clearly, including natural clip playback when browser voice is poor.'
+      },
+      'image-rater': {
+        feature: 'Load image decks, rate fast with keyboard/touch swipe, and build preference profiles with optional online AI caption auto-tagging.',
+        scenario: 'Use for product/fashion feedback loops and recommendation tuning with offline-first workflows.'
+      },
+      'light-messenger': {
+        feature: 'Transmit short Morse-framed light messages and receive by camera.',
+        scenario: 'Use for line-of-sight backup comms in off-grid or emergency situations.'
+      },
+      'music-player': {
+        feature: 'Load local audio files into a playlist with play/pause/next/prev controls and volume.',
+        scenario: 'Use for offline music playback on old machines or in field mode.'
+      },
+      'audio-notes': {
+        feature: 'Record voice notes with mic, review/download locally, and optionally sync clips when online.',
+        scenario: 'Use for quick spoken logs, reminders, and field journaling.'
+      },
+      'chatgpt-viewer': {
+        feature: 'Browse and review saved chat logs.',
+        scenario: 'Use for reference, summarization, and handoff context.'
+      },
+      'qr-generator': {
+        feature: 'Generate QR codes from text or links.',
+        scenario: 'Use for quick sharing at events or on documents.'
+      },
+      'markdown-slides': {
+        feature: 'Convert markdown content into presentable slides.',
+        scenario: 'Use for fast technical presentations.'
+      },
+      'ui-tweaker': {
+        feature: 'Edit selector/property/value tweaks, save per path, and auto-apply on next app load.',
+        scenario: 'Use to customize launcher icons/layout and keep your preferred UI style persistent.'
+      },
+      'profile': {
+        feature: 'Set and rotate one global username/password used by protected apps.',
+        scenario: 'Use before opening GigTax or Snippet Board, and sign out quickly from shared devices.'
+      },
+      'chronoquest': {
+        feature: 'Three timezone challenge modes with countdown scoring, streaks, lives, keyboard controls, and a fixed-offset world clock.',
+        scenario: 'Use for geography practice, distributed-team timezone fluency, or a fast offline brain-training round.'
+      },
+      'game-academy': {
+        feature: '2-in-1 strategy trainer with Chess and Checkers in Play mode or Watch & Learn AI commentary mode.',
+        scenario: 'Use to study tactics and positional ideas while watching different skill levels explain moves.'
+      },
+      'reversi': {
+        feature: 'Play classic Reversi against configurable AI or watch AI-vs-AI with move-by-move teaching notes.',
+        scenario: 'Use to learn positional strategy: corners, mobility, and avoiding dangerous squares.'
+      },
+      'battleship': {
+        feature: 'Turn-based battleship board game with tactical targeting.',
+        scenario: 'Use for strategy gameplay and short challenge sessions.'
+      },
+      'positive-iq': {
+        feature: 'Multi-part cognitive test style mini-games with scoring.',
+        scenario: 'Use for mental warmups and focus training.'
+      },
+      'math-raindrops': {
+        feature: 'Adaptive falling-problem game for rapid arithmetic response.',
+        scenario: 'Use for daily calculation speed drills.'
+      },
+      'tetris': {
+        feature: 'Offline falling-block game with 7-bag pieces, hold, ghost piece, next queue, scoring, levels, and touch controls.',
+        scenario: 'Use for a focused arcade break with keyboard or phone controls, even without a connection.'
+      },
+      'tic-tac-toe': {
+        feature: 'Generalized Tic-Tac-Toe with configurable board size/win length, AI tier, and score tracking.',
+        scenario: 'Use for short breaks or logic warmups, from 3x3 quick games to larger strategy boards.'
+      },
+      'snake': {
+        feature: 'Arcade-style snake gameplay with score challenge.',
+        scenario: 'Use for quick reset breaks between tasks.'
+      },
+      'pattern-mirror': {
+        feature: 'Pattern memory and sequencing challenge.',
+        scenario: 'Use for concentration and memory training.'
+      },
+      'odd-one-out': {
+        feature: 'Find subtle visual differences under time pressure.',
+        scenario: 'Use for attention and rapid perception practice.'
+      }
+    };
+    let cachedApps = null;
+    let deferredInstallPrompt = null;
+    const RECENT_APPS_KEY = 'suite_recent_apps_v1';
+    const SORT_MODE_KEY = 'suite_sort_mode_v1';
+    const FAVORITE_APPS_KEY = 'suite_favorite_apps_v1';
+    const CONNECTIVITY_FILTER_KEY = 'suite_connectivity_filter_v1';
+    const INSTALL_ACK_KEY = 'suite_install_ack_v1';
+    const SORT_MODES = ['categories', 'az', 'za', 'recent', 'favorites'];
+    const CONNECTIVITY_FILTERS = ['all', 'airplane', 'wifi'];
+
+    function loadRecentMap() {
+      try {
+        const raw = localStorage.getItem(RECENT_APPS_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return {};
+        const normalized = {};
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof k === 'string' && typeof v === 'number' && Number.isFinite(v)) {
+            normalized[k] = v;
+          }
+        }
+        return normalized;
+      } catch (_) {
+        return {};
+      }
+    }
+    function saveRecentMap(map) {
+      try {
+        localStorage.setItem(RECENT_APPS_KEY, JSON.stringify(map));
+      } catch (_) {}
+    }
+    function loadFavoriteMap() {
+      try {
+        const raw = localStorage.getItem(FAVORITE_APPS_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        if (!parsed || typeof parsed !== 'object') return {};
+        const normalized = {};
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof k === 'string' && v === true) normalized[k] = true;
+        }
+        return normalized;
+      } catch (_) {
+        return {};
+      }
+    }
+    function saveFavoriteMap(map) {
+      try {
+        localStorage.setItem(FAVORITE_APPS_KEY, JSON.stringify(map));
+      } catch (_) {}
+    }
+    function isFavoriteApp(appKey) {
+      return Boolean(loadFavoriteMap()[appKey]);
+    }
+    function toggleFavoriteApp(appKey) {
+      if (!appKey) return false;
+      const map = loadFavoriteMap();
+      const next = !map[appKey];
+      if (next) map[appKey] = true;
+      else delete map[appKey];
+      saveFavoriteMap(map);
+      return next;
+    }
+    function markRecentApp(appKey) {
+      if (!appKey) return;
+      const map = loadRecentMap();
+      map[appKey] = Date.now();
+      saveRecentMap(map);
+    }
+    function getSortMode() {
+      try {
+        const mode = (localStorage.getItem(SORT_MODE_KEY) || '').toLowerCase();
+        return SORT_MODES.includes(mode) ? mode : 'categories';
+      } catch (_) {
+        return 'categories';
+      }
+    }
+    function setSortMode(mode) {
+      const safeMode = SORT_MODES.includes(mode) ? mode : 'categories';
+      try {
+        localStorage.setItem(SORT_MODE_KEY, safeMode);
+      } catch (_) {}
+      return safeMode;
+    }
+    function hasInstallAck() {
+      try {
+        return localStorage.getItem(INSTALL_ACK_KEY) === '1';
+      } catch (_) {
+        return false;
+      }
+    }
+    function getConnectivityFilter() {
+      try {
+        const mode = (localStorage.getItem(CONNECTIVITY_FILTER_KEY) || '').toLowerCase();
+        return CONNECTIVITY_FILTERS.includes(mode) ? mode : 'all';
+      } catch (_) {
+        return 'all';
+      }
+    }
+    function setConnectivityFilter(mode) {
+      const safeMode = CONNECTIVITY_FILTERS.includes(mode) ? mode : 'all';
+      try {
+        localStorage.setItem(CONNECTIVITY_FILTER_KEY, safeMode);
+      } catch (_) {}
+      return safeMode;
+    }
+    function setInstallAck(value) {
+      try {
+        if (value) localStorage.setItem(INSTALL_ACK_KEY, '1');
+        else localStorage.removeItem(INSTALL_ACK_KEY);
+      } catch (_) {}
+    }
+    function refreshInstallButton() {
+      const btn = document.getElementById('installAppBtn');
+      if (!btn) return;
+      if (isStandaloneMode() || hasInstallAck()) {
+        btn.style.display = 'none';
+      } else {
+        btn.style.display = '';
+      }
+    }
+    function getConnectivityMode(app) {
+      if (!app || typeof app !== 'object') return 'airplane';
+      const offlineMode = typeof app.offline === 'string' ? app.offline.toLowerCase() : '';
+      if (offlineMode === 'hybrid' || offlineMode === 'wifi' || offlineMode === 'online' || offlineMode === 'network') {
+        return 'wifi';
+      }
+      if (app.offline === false) return 'wifi';
+      return 'airplane';
+    }
+    function getOfflineBadgeHTML(app) {
+      const mode = getConnectivityMode(app);
+      if (mode === 'wifi') return '<span class="s-badge s-badge-outline badge badge-connectivity online" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171;">WI-FI / CELL</span>';
+      return '<span class="s-badge s-badge-outline badge badge-connectivity offline" style="border-color: rgba(74, 222, 128, 0.4); color: #4ade80;">AIRPLANE MODE</span>';
+    }
+    function getTierBadgeHTML(app) {
+      if (app.demo) return '<span class="s-badge s-badge-secondary">DEMO</span>';
+      if (app.free) return '<span class="s-badge s-badge-default" style="background: #6366f1; color: white;">FREE</span>';
+      return '<span class="s-badge s-badge-default">FULL</span>';
+    }
+    function getAllApps(foundApps) {
+      const all = [];
+      for (const [categoryKey, category] of Object.entries(foundApps)) {
+        for (const app of category.found) {
+          all.push({
+            ...app,
+            categoryKey,
+            categoryTitle: category.title
+          });
+        }
+      }
+      return all;
+    }
+    function includeByConnectivityFilter(app, mode) {
+      if (mode === 'all') return true;
+      const appMode = getConnectivityMode(app);
+      if (mode === 'airplane') return appMode === 'airplane';
+      if (mode === 'wifi') return appMode === 'wifi';
+      return true;
+    }
+    function applyConnectivityFilter(foundApps) {
+      const mode = getConnectivityFilter();
+      if (mode === 'all') return foundApps;
+      const filtered = {};
+      for (const [categoryKey, category] of Object.entries(foundApps)) {
+        filtered[categoryKey] = {
+          ...category,
+          found: category.found.filter(app => includeByConnectivityFilter(app, mode))
+        };
+      }
+      return filtered;
+    }
+    function sortAppsForMode(apps, mode) {
+      const sorted = [...apps];
+      if (mode === 'favorites') {
+        return sorted
+          .filter(app => isFavoriteApp(app.key))
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+      }
+      if (mode === 'az' || mode === 'za') {
+        sorted.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+        if (mode === 'za') sorted.reverse();
+        return sorted;
+      }
+      if (mode === 'recent') {
+        const recent = loadRecentMap();
+        sorted.sort((a, b) => {
+          const diff = (recent[b.key] || 0) - (recent[a.key] || 0);
+          if (diff !== 0) return diff;
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        });
+      }
+      return sorted;
+    }
+    function appItemHTML(app, categoryKey, includeCategoryTag) {
+      const categoryTitle = APP_REGISTRY[categoryKey]?.title || categoryKey;
+      const cleanTitle = categoryTitle.includes(' ') ? categoryTitle.split(' ').slice(1).join(' ') : categoryTitle;
+      const categoryBadge = includeCategoryTag
+        ? `<span class="s-badge s-badge-outline text-muted">${cleanTitle}</span>`
+        : '';
+      const favoriteState = isFavoriteApp(app.key);
+      const favoriteLabel = favoriteState ? 'Unfavorite app' : 'Add to favorites';
+      return `
+        <a href="${toAppHref(app)}" class="app-item" data-app-key="${app.key}" data-category-key="${categoryKey}">
+          <div class="app-info">
+            <div class="app-icon" data-app-key="${app.key}">
+              <img src="shared/icons/${app.icon}" alt="" onerror="this.style.display='none'" aria-hidden="true">
+            </div>
+            <div>
+              <div class="app-name">${app.name}</div>
+              <div class="app-desc text-muted">${app.desc}</div>
+              <div class="app-meta">${categoryBadge}</div>
+            </div>
+          </div>
+          <div class="badges flex items-center gap-2">
+            ${getOfflineBadgeHTML(app)}
+            ${getTierBadgeHTML(app)}
+            <button class="s-btn s-btn-ghost s-btn-icon ${favoriteState ? 'is-favorite' : ''}" type="button" data-favorite-btn="1" data-app-key="${app.key}" aria-label="${favoriteLabel}" title="${favoriteLabel}" style="width: 32px; height: 32px; border-radius: 999px;">
+              <i data-lucide="star" ${favoriteState ? 'fill="#f59e0b" color="#f59e0b"' : ''}></i>
+            </button>
+          </div>
+        </a>
+      `;
+    }
+    function renderFavoritesSectionHTML(foundApps) {
+      const favorites = sortAppsForMode(getAllApps(foundApps).filter(app => isFavoriteApp(app.key)), 'az');
+      if (!favorites.length) {
+        return `
+          <div class="category" data-category="favorites">
+            <div class="category-header" onclick="toggleCategory('favorites')">
+              <div class="category-title">
+                <div class="category-icon" style="background: hsl(var(--secondary) / 0.5);">
+                  <i data-lucide="star"></i>
+                </div>
+                <span>Favorites</span>
+                <span class="s-badge s-badge-secondary" style="margin-left: 8px;">0</span>
+              </div>
+              <i data-lucide="chevron-down" class="chevron"></i>
+            </div>
+            <div class="apps-list">
+              <div class="favorites-empty p-4 text-muted" style="font-size: 0.875rem;">Pin your go-to apps with the star button and they will stay here.</div>
+            </div>
+          </div>
+        `;
+      }
+      return `
+        <div class="category open" data-category="favorites">
+          <div class="category-header" onclick="toggleCategory('favorites')">
+            <div class="category-title">
+              <div class="category-icon" style="background: hsl(45 93% 47% / 0.2); color: #f59e0b;">
+                <i data-lucide="star" fill="#f59e0b"></i>
+              </div>
+              <span>Favorites</span>
+              <span class="s-badge s-badge-secondary" style="margin-left: 8px;">${favorites.length}</span>
+            </div>
+            <i data-lucide="chevron-down" class="chevron"></i>
+          </div>
+          <div class="apps-list">
+            ${favorites.map(app => appItemHTML(app, app.categoryKey, true)).join('')}
+          </div>
+        </div>
+      `;
+    }
+    function renderCurrentLauncher(foundApps) {
+      const filteredApps = applyConnectivityFilter(foundApps);
+      const mode = getSortMode();
+      if (mode === 'categories') {
+        renderLauncher(filteredApps);
+        return;
+      }
+      if (mode === 'favorites') {
+        const favoriteApps = sortAppsForMode(getAllApps(filteredApps), 'favorites');
+        renderFlatLauncher(favoriteApps, mode, filteredApps, { showFavoritesSection: false });
+        return;
+      }
+      const allApps = sortAppsForMode(getAllApps(filteredApps), mode);
+      renderFlatLauncher(allApps, mode, filteredApps);
+    }
+
+    function scanApps() {
+      // Use static registry - assume all registered apps exist
+      // This avoids CORS issues when opening via file:// protocol
+      const foundApps = {};
+      
+      for (const [categoryKey, category] of Object.entries(APP_REGISTRY)) {
+        foundApps[categoryKey] = { ...category, found: [] };
+        
+        for (const [appKey, appMeta] of Object.entries(category.apps)) {
+          foundApps[categoryKey].found.push({
+            key: appKey,
+            ...appMeta
+          });
+        }
+      }
+      
+      return foundApps;
+    }
+
+    function countApps(foundApps) {
+      let total = 0;
+      for (const category of Object.values(foundApps)) {
+        total += category.found.length;
+      }
+      return total;
+    }
+    function safeCreateIcons() {
+      try {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      } catch (_) {
+        // Keep launcher functional even if icon library fails to load.
+      }
+    }
+    function getAppHelp(app) {
+      const meta = APP_HELP[app.key];
+      if (meta) return meta;
+      return {
+        feature: app.desc || 'Core workflow available in this app.',
+        scenario: 'Open the app to run its main workflow.'
+      };
+    }
+    function renderHelp(foundApps) {
+      const html = Object.values(foundApps)
+        .filter(category => category.found.length > 0)
+        .map(category => {
+          const cards = category.found.map(app => {
+            const help = getAppHelp(app);
+            return `
+              <article class="s-card" style="padding: 16px;">
+                <div class="flex items-center gap-2 m-b-4">
+                  <div class="app-icon" style="width: 32px; height: 32px; border-radius: 6px;">
+                    <img src="shared/icons/${app.icon}" style="width: 18px; height: 18px; filter: brightness(0) invert(1);" onerror="this.style.display='none'" aria-hidden="true">
+                  </div>
+                  <h3 class="font-semibold">${app.name}</h3>
+                </div>
+                <p style="font-size: 0.875rem; line-height: 1.5;"><strong class="text-muted">Feature:</strong> ${help.feature}</p>
+                <p style="font-size: 0.875rem; line-height: 1.5; margin-top: 8px;"><strong class="text-muted">Scenario:</strong> ${help.scenario}</p>
+              </article>
+            `;
+          }).join('');
+          return `
+            <section style="margin-bottom: 32px;">
+              <h4 class="text-muted font-semibold" style="font-size: 0.75rem; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.05em;">${category.title.split(' ').slice(1).join(' ')}</h4>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">${cards}</div>
+            </section>
+          `;
+        })
+        .join('');
+      document.getElementById('helpBody').innerHTML = html;
+      safeCreateIcons();
+    }
+    function openHelp() {
+      const ov = document.getElementById('helpOverlay');
+      ov.classList.add('open');
+      ov.setAttribute('aria-hidden', 'false');
+    }
+    function closeHelp() {
+      const ov = document.getElementById('helpOverlay');
+      ov.classList.remove('open');
+      ov.setAttribute('aria-hidden', 'true');
+    }
+    function isStandaloneMode() {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+    function isIOS() {
+      return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    }
+    function setInstallHint(message) {
+      const hint = document.getElementById('installHint');
+      if (!hint) return;
+      hint.textContent = message;
+    }
+    async function handleInstallClick() {
+      const btn = document.getElementById('installAppBtn');
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice.catch(() => null);
+        deferredInstallPrompt = null;
+        if (choice && choice.outcome === 'accepted') {
+          setInstallAck(true);
+          setInstallHint('Installed. You can launch it from your home screen.');
+          if (btn) btn.style.display = 'none';
+        } else {
+          setInstallHint('Install dismissed. You can try again.');
+        }
+        return;
+      }
+      if (isStandaloneMode()) {
+        setInstallAck(true);
+        setInstallHint('Already installed on this device.');
+        refreshInstallButton();
+        return;
+      }
+      if (isIOS()) {
+        setInstallHint('On iPhone: Share -> Add to Home Screen.');
+        return;
+      }
+      if (!window.isSecureContext && !/^(localhost|127\.0\.0\.1)$/i.test(location.hostname)) {
+        setInstallHint('For full offline install use HTTPS. LAN HTTP can still use browser Add to Home screen shortcut.');
+        return;
+      }
+      setInstallHint('Use browser menu -> Install app / Add to Home screen.');
+    }
+
+    function renderLauncher(foundApps) {
+      const favoritesSection = renderFavoritesSectionHTML(foundApps);
+      const html = Object.entries(foundApps)
+        .filter(([_, category]) => category.found.length > 0)
+        .map(([categoryKey, category], index) => `
+          <div class="category ${index === 0 ? 'open' : ''}" data-category="${categoryKey}">
+            <div class="category-header" onclick="toggleCategory('${categoryKey}')">
+              <div class="category-title">
+                <div class="category-icon">
+                  <img src="shared/icons/${category.icon}" alt="" onerror="this.style.display='none'" aria-hidden="true" style="width: 18px; height: 18px; filter: brightness(0) invert(1);">
+                </div>
+                <span>${category.title.split(' ').slice(1).join(' ')}</span>
+                <span class="s-badge s-badge-secondary" style="margin-left: 8px;">${category.found.length}</span>
+              </div>
+              <i data-lucide="chevron-down" class="chevron"></i>
+            </div>
+            <div class="apps-list">
+              ${category.found
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+                .map(app => appItemHTML(app, categoryKey, false))
+                .join('')}
+            </div>
+          </div>
+        `).join('');
+      
+      document.getElementById('content').innerHTML = favoritesSection + html;
+      safeCreateIcons();
+    }
+    function renderFlatLauncher(apps, mode, foundApps, options) {
+      const opts = options || {};
+      const modeTitle = mode === 'recent'
+        ? 'Most Recently Used'
+        : mode === 'favorites'
+          ? 'Favorite Apps'
+          : (mode === 'za' ? 'All Apps (Z-A)' : 'All Apps (A-Z)');
+      const modeIcon = mode === 'recent' ? 'clock' : (mode === 'favorites' ? 'star' : 'layout-grid');
+      const html = `
+        <div class="category open" data-category="all-apps">
+          <div class="category-header">
+            <div class="category-title">
+              <div class="category-icon">
+                <i data-lucide="${modeIcon}"></i>
+              </div>
+              <span>${modeTitle}</span>
+              <span class="s-badge s-badge-secondary" style="margin-left: 8px;">${apps.length}</span>
+            </div>
+            <i data-lucide="chevron-down" class="chevron"></i>
+          </div>
+          <div class="apps-list">
+            ${apps.length
+              ? apps.map(app => appItemHTML(app, app.categoryKey, true)).join('')
+              : '<div class="favorites-empty p-4 text-muted">No apps to show for this view yet.</div>'}
+          </div>
+        </div>
+      `;
+      if (opts.showFavoritesSection === false) {
+        document.getElementById('content').innerHTML = html;
+      } else {
+        document.getElementById('content').innerHTML = renderFavoritesSectionHTML(foundApps) + html;
+      }
+      safeCreateIcons();
+    }
+    function getSuiteBasePathname() {
+      const p = window.location.pathname || '/';
+      const tail = p.split('/').pop() || '';
+      if (p.endsWith('/')) return p;
+      if (!tail.includes('.')) return p + '/';
+      const idx = p.lastIndexOf('/');
+      return (idx >= 0 ? p.slice(0, idx + 1) : '/');
+    }
+
+    function normalizeSuiteRelativePath(path) {
+      return String(path || '').replace(/^\.?\//, '').replace(/^\//, '');
+    }
+
+    function toSuiteHref(path) {
+      const normalized = normalizeSuiteRelativePath(path);
+      const base = window.location.origin + getSuiteBasePathname();
+      const url = new URL(normalized, base);
+      return url.pathname + url.search + url.hash;
+    }
+
+    function toAppHref(app) {
+      const raw = app.path || (app.key + '/index.html');
+      if (/^https?:\/\//i.test(raw)) return raw;
+      const url = new URL(toSuiteHref(raw), window.location.origin);
+      url.searchParams.set('v', APP_NAV_VERSION);
+      return url.pathname + url.search;
+    }
+
+    function normalizeHandle(value) {
+      const v = String(value || '').trim().toLowerCase();
+      return /^[a-z0-9._-]{3,64}$/.test(v) ? v : '';
+    }
+
+    function captureReferralHandleFromURL() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const handle = normalizeHandle(params.get('u') || params.get('user'));
+        if (!handle) return;
+        localStorage.setItem('suite_ref_user', handle);
+        sessionStorage.setItem('suite_ref_user', handle);
+      } catch (_) {}
+    }
+
+    function hasLegacyLogin() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('login') === '1') {
+          sessionStorage.setItem('suite_logged_in', '1');
+        }
+      } catch (_) {}
+
+      let localFlag = false;
+      let sessionFlag = false;
+      try { localFlag = localStorage.getItem('suite_logged_in') === '1'; } catch (_) {}
+      try { sessionFlag = sessionStorage.getItem('suite_logged_in') === '1'; } catch (_) {}
+      return localFlag || sessionFlag;
+    }
+
+    function isSignedIn() {
+      const legacy = hasLegacyLogin();
+      let modern = false;
+      try {
+        modern = !!(window.SuiteAuth && typeof window.SuiteAuth.isSignedIn === 'function' && window.SuiteAuth.isSignedIn());
+      } catch (_) {}
+      return legacy || modern;
+    }
+
+    function clearLoginState() {
+      try { localStorage.removeItem('suite_logged_in'); } catch (_) {}
+      try { sessionStorage.removeItem('suite_logged_in'); } catch (_) {}
+      try {
+        if (window.SuiteAuth && typeof window.SuiteAuth.signOut === 'function') {
+          window.SuiteAuth.signOut();
+        }
+      } catch (_) {}
+    }
+
+    function goToLandingForAuth() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const ref = normalizeHandle(params.get('u') || params.get('user'));
+        const next = new URLSearchParams();
+        next.set('next', 'index');
+        if (ref) next.set('u', ref);
+        window.location.href = toSuiteHref(`landing.html?${next.toString()}`);
+      } catch (_) {
+        window.location.href = toSuiteHref('landing.html?next=index');
+      }
+    }
+
+    function toggleCategory(categoryKey) {
+      const category = document.querySelector(`[data-category="${categoryKey}"]`);
+      if (!category) return;
+      category.classList.toggle('open');
+    }
+
+    function init() {
+      captureReferralHandleFromURL();
+
+      const controls = document.querySelector('.launcher-controls');
+      if (controls) controls.style.display = 'flex';
+      const signOutBtnVisible = document.getElementById('signOutBtn');
+      if (signOutBtnVisible) signOutBtnVisible.style.display = 'none';
+
+      const foundApps = scanApps();
+      cachedApps = foundApps;
+      renderHelp(foundApps);
+      const totalApps = countApps(foundApps);
+      
+      if (totalApps === 0) {
+        document.getElementById('content').innerHTML = `
+          <div style="text-align: center; padding: 60px 20px;">
+            <h2 style="color: #ef4444; margin-bottom: 16px;">No Apps Found</h2>
+            <p style="color: #94a3b8;">Make sure app folders are in the same directory as this file.</p>
+            <p style="color: #64748b; margin-top: 12px; font-size: 0.9em;">Expected structure: ./app-name/index.html</p>
+          </div>
+        `;
+      } else if (totalApps === 1) {
+        const singleApp = Object.values(foundApps)
+          .find(cat => cat.found.length > 0).found[0];
+        
+        document.getElementById('content').innerHTML = `
+          <div class="loading">
+            <div class="spinner"></div>
+            <p>Opening ${singleApp.name}...</p>
+          </div>
+        `;
+        
+        setTimeout(() => {
+          window.location.href = toAppHref(singleApp);
+        }, 500);
+      } else {
+        renderCurrentLauncher(foundApps);
+      }
+      const sortModeSelect = document.getElementById('sortModeSelect');
+      if (sortModeSelect) {
+        sortModeSelect.value = getSortMode();
+        sortModeSelect.addEventListener('change', () => {
+          setSortMode(sortModeSelect.value);
+          if (cachedApps) renderCurrentLauncher(cachedApps);
+        });
+      }
+      const connectivityFilterSelect = document.getElementById('connectivityFilterSelect');
+      if (connectivityFilterSelect) {
+        connectivityFilterSelect.value = getConnectivityFilter();
+        connectivityFilterSelect.addEventListener('change', () => {
+          setConnectivityFilter(connectivityFilterSelect.value);
+          if (cachedApps) renderCurrentLauncher(cachedApps);
+        });
+      }
+      const clearRecentBtn = document.getElementById('clearRecentBtn');
+      if (clearRecentBtn) {
+        clearRecentBtn.addEventListener('click', () => {
+          saveRecentMap({});
+          if (cachedApps && getSortMode() === 'recent') renderCurrentLauncher(cachedApps);
+        });
+      }
+      const contentEl = document.getElementById('content');
+      if (contentEl) {
+        contentEl.addEventListener('click', e => {
+          const favBtn = e.target.closest('button.favorite-btn[data-favorite-btn="1"]');
+          if (favBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleFavoriteApp(favBtn.getAttribute('data-app-key'));
+            if (cachedApps) renderCurrentLauncher(cachedApps);
+            return;
+          }
+          const link = e.target.closest('a.app-item[data-app-key]');
+          if (!link) return;
+          markRecentApp(link.getAttribute('data-app-key'));
+        });
+      }
+      document.getElementById('openHelpBtn').addEventListener('click', openHelp);
+      const installBtn = document.getElementById('installAppBtn');
+      if (installBtn) {
+        installBtn.addEventListener('click', handleInstallClick);
+      }
+      const signOutBtn = document.getElementById('signOutBtn');
+      if (signOutBtn) {
+        signOutBtn.addEventListener('click', () => {
+          clearLoginState();
+          window.location.href = 'landing.html?signed_out=1';
+        });
+      }
+      if (isStandaloneMode()) {
+        setInstallAck(true);
+        if (installBtn) installBtn.style.display = 'none';
+      } else {
+        refreshInstallButton();
+        setInstallHint('Tip: for compass/GPS on iPhone use HTTPS, then Add to Home Screen.');
+      }
+      document.getElementById('closeHelpBtn').addEventListener('click', closeHelp);
+      document.getElementById('helpOverlay').addEventListener('click', e => {
+        if (e.target.id === 'helpOverlay') closeHelp();
+      });
+      window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        setInstallHint('Ready: tap Install to add app icon.');
+      });
+      window.addEventListener('appinstalled', () => {
+        setInstallAck(true);
+        setInstallHint('Installed successfully.');
+        if (installBtn) installBtn.style.display = 'none';
+      });
+      const displayModeMedia = window.matchMedia('(display-mode: standalone)');
+      if (displayModeMedia && typeof displayModeMedia.addEventListener === 'function') {
+        displayModeMedia.addEventListener('change', () => {
+          if (isStandaloneMode()) setInstallAck(true);
+          refreshInstallButton();
+        });
+      }
+      document.addEventListener('keydown', e => {
+        if (e.key === 'F1') {
+          e.preventDefault();
+          if (!cachedApps) return;
+          openHelp();
+        }
+        if (e.key === 'Escape') closeHelp();
+      });
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('help') === '1') openHelp();
+    }
+
+    init();
+  </script>
+  <script src="./shared/launcher-explorer.js"></script>
+</body>
+</html>
