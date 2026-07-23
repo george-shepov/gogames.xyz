@@ -1,0 +1,24 @@
+/* Keep the card index in the standard upper-left and lower-right corners.
+   Player cards are buttons, whose browser default text alignment centered the
+   unpositioned rank/suit label in the middle of the card. */
+.card {
+  text-align: left;
+}
+
+.card > .card-corner:not(.bottom) {
+  position: absolute;
+  top: calc(var(--card-w) * .08);
+  left: calc(var(--card-w) * .08);
+  z-index: 2;
+  display: block;
+  min-width: calc(var(--card-w) * .22);
+  text-align: center;
+}
+
+.card > .card-center {
+  z-index: 1;
+}
+
+.card > .card-corner.bottom {
+  z-index: 2;
+}
