@@ -11,6 +11,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
+const { createPayoutRouter } = require('./payouts');
 const { createRewardRouter } = require('./reward-engine');
 
 const app = express();
@@ -325,6 +326,32 @@ app.get('/api/battles/:id', (req, res) => {
   return res.json(sanitizeBattle(battle));
 });
 
+function resolveBets(battleId, winner) {
+  const battle = battles.get(battleId);
+  if (!battle) return;
+  const pendingBets = [...bets.values()].filter((bet) => bet.battleId === battleId && bet.status === 'pending');
+  const totalPool = battle.poolA + battle.poolB + battle.poolDraw;
+  const winnerPool = winner === 'a' ? battle.poolA : winner === 'b' ? battle.poolB : battle.poolDraw;
+
+  pendingBets.forEach((bet) => {
+    const user = users.get(bet.userId);
+    if (!user) return;
+    if (winner === null) {
+      bet.status = 'refunded';
+      user.ggxBalance += bet.amount;
+    } else if (bet.choice === winner) {
+      bet.status = 'won';
+      const share = winnerPool > 0 ? bet.amount / winnerPool : 1;
+      user.ggxBalance += Math.floor(totalPool * 0.95 * share);
+    } else {
+      bet.status = 'lost';
+    }
+  });
+}
+
+// This endpoint settles play credits only. It never creates a real-value payout.
+// A production result service must authenticate and server-verify the outcome before
+// it creates a payout claim through /api/internal/payouts.
 app.patch('/api/battles/:id/finish', (req, res) => {
   const battle = battles.get(req.params.id);
   if (!battle) return res.status(404).json({ error: 'Battle not found' });
@@ -393,7 +420,7 @@ app.post('/api/create-payment-intent', async (req, res) => {
 
   try {
     const paymentIntent = await stripe.paymentIntents.create({
-      amount,
+      amount: Math.round(usd * 100),
       currency: 'usd',
       metadata: { ggx: String(ggx), email, balanceType: 'utility' },
       receipt_email: email,
