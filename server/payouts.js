@@ -364,6 +364,9 @@ class PayoutStore {
 
   beginDispatch(id, actor = 'payout-provider') {
     const payout = this.get(id);
+    if (payout.state !== 'approved') {
+      throw Object.assign(new Error(`Payout must be approved before dispatch; current state is ${payout.state}`), { statusCode: 409 });
+    }
     if (!allChecksPass(payout)) {
       payout.state = 'blocked';
       this.appendAudit(payout, 'payout.dispatch_blocked', actor, { reasons: blockingReasons(payout) });
@@ -371,9 +374,6 @@ class PayoutStore {
         statusCode: 409,
         details: blockingReasons(payout),
       });
-    }
-    if (payout.state !== 'approved') {
-      throw Object.assign(new Error(`Payout must be approved before dispatch; current state is ${payout.state}`), { statusCode: 409 });
     }
     payout.state = 'processing';
     this.appendAudit(payout, 'payout.processing', actor);
