@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChronoQuest — Time Zone Arena</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg:#08111f; --panel:#101b2d; --panel2:#16243b; --text:#eef6ff;
+  --muted:#93a8c4; --accent:#77e0ff; --accent2:#b78cff; --good:#57e389;
+  --bad:#ff6b7a; --warn:#ffd166; --line:rgba(255,255,255,.10);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; color:var(--text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(119,224,255,.16), transparent 30%),
+    radial-gradient(circle at 90% 0%, rgba(183,140,255,.18), transparent 34%),
+    linear-gradient(160deg,#07101d,#0a1425 50%,#070d17);
+}
+button,select{font:inherit}
+.app{max-width:1120px;margin:auto;padding:24px}
+.topbar{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:25px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 12px 35px rgba(119,224,255,.18)}
+h1,h2,h3,p{margin-top:0}
+h1{font-size:clamp(24px,4vw,40px);margin-bottom:2px}
+.sub{color:var(--muted);font-size:14px}
+.pill{padding:8px 12px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:rgba(255,255,255,.04)}
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(290px,.8fr);gap:18px}
+.card{background:linear-gradient(180deg,rgba(22,36,59,.94),rgba(13,24,41,.96));border:1px solid var(--line);border-radius:24px;box-shadow:0 18px 55px rgba(0,0,0,.28);overflow:hidden}
+.hero{padding:clamp(22px,5vw,42px);min-height:560px;display:flex;flex-direction:column;justify-content:center;position:relative}
+.hero:before{content:"";position:absolute;inset:auto -80px -100px auto;width:330px;height:330px;border-radius:50%;border:1px solid rgba(119,224,255,.14);box-shadow:0 0 0 50px rgba(119,224,255,.025),0 0 0 100px rgba(183,140,255,.02)}
+.eyebrow{letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:800;font-size:12px}
+.big{font-size:clamp(42px,8vw,88px);line-height:.95;margin:12px 0 16px;max-width:760px}
+.lead{color:var(--muted);font-size:18px;line-height:1.6;max-width:720px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
+.btn{border:0;border-radius:14px;padding:13px 18px;cursor:pointer;font-weight:800;color:#06131d;background:linear-gradient(135deg,var(--accent),#a8f0ff);box-shadow:0 10px 28px rgba(119,224,255,.18);transition:.2s transform,.2s filter}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.05)}
+.btn.secondary{color:var(--text);background:rgba(255,255,255,.06);border:1px solid var(--line);box-shadow:none}
+.side{padding:22px;display:flex;flex-direction:column;gap:16px}
+.statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{padding:15px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid var(--line)}
+.stat b{display:block;font-size:25px} .stat span{color:var(--muted);font-size:12px}
+.mode-list{display:grid;gap:9px}
+.mode-btn{text-align:left;padding:14px;border-radius:15px;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--text);cursor:pointer}
+.mode-btn.active{border-color:rgba(119,224,255,.7);background:rgba(119,224,255,.1)}
+.mode-btn strong{display:block} .mode-btn small{color:var(--muted)}
+.game{display:none;padding:24px;min-height:560px}
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.hud .stat{text-align:center}
+.progress{height:9px;background:rgba(255,255,255,.07);border-radius:999px;overflow:hidden;margin-bottom:26px}
+.progress>i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--good),var(--warn),var(--bad));transform-origin:left}
+.prompt{text-align:center;padding:14px 10px 22px}
+.prompt .label{color:var(--muted);font-size:14px;text-transform:uppercase;letter-spacing:.12em}
+.prompt .question{font-size:clamp(34px,7vw,72px);font-weight:900;margin:12px 0}
+.prompt .hint{color:var(--muted)}
+.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.choice{min-height:88px;padding:16px;border-radius:18px;border:1px solid var(--line);background:rgba(255,255,255,.045);color:var(--text);cursor:pointer;font-weight:800;font-size:17px;position:relative}
+.choice:hover{border-color:rgba(119,224,255,.65);background:rgba(119,224,255,.08)}
+.choice.correct{background:rgba(87,227,137,.16);border-color:var(--good)}
+.choice.wrong{background:rgba(255,107,122,.14);border-color:var(--bad)}
+.key{position:absolute;top:8px;right:9px;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:7px;padding:3px 6px}
+.feedback{height:42px;text-align:center;font-weight:800;padding-top:12px}
+.explorer{display:none;padding:24px}
+.explorer-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.clock{padding:28px;border-radius:22px;background:linear-gradient(135deg,rgba(119,224,255,.12),rgba(183,140,255,.1));border:1px solid var(--line);text-align:center}
+.clock-time{font-size:clamp(44px,8vw,78px);font-weight:900;font-variant-numeric:tabular-nums}
+.clock-date{color:var(--muted);margin-top:8px}
+select{width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);background:#111d31;color:var(--text)}
+.offset-track{display:grid;grid-template-columns:repeat(13,1fr);gap:4px;margin-top:18px}
+.offset-track span{height:42px;border-radius:8px;background:rgba(255,255,255,.05);display:grid;place-items:center;font-size:10px;color:var(--muted)}
+.offset-track span.hot{background:rgba(119,224,255,.18);color:var(--text);outline:1px solid rgba(119,224,255,.65)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(3,8,15,.78);backdrop-filter:blur(8px);place-items:center;padding:20px;z-index:20}
+.modal{max-width:500px;width:100%;padding:30px;border-radius:24px;background:#111d31;border:1px solid var(--line);text-align:center}
+.final-score{font-size:72px;font-weight:900;margin:10px 0}
+.confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:30}
+.confetti i{position:absolute;width:9px;height:16px;background:var(--accent);top:-20px;animation:fall 1.7s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:.2}}
+.note{font-size:12px;color:var(--muted);line-height:1.5}
+@media(max-width:820px){.grid{grid-template-columns:1fr}.hero{min-height:auto}.side{order:-1}}
+@media(max-width:560px){.app{padding:14px}.choices{grid-template-columns:1fr}.hud{grid-template-columns:repeat(2,1fr)}.explorer-grid{grid-template-columns:1fr}.pill{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="logo">🕒</div><div><h1>ChronoQuest</h1><div class="sub">Time Zone Arena</div></div></div>
+    <div style="display:flex;gap:8px;align-items:center"><a id="suiteBack" class="pill" href="../index.html" style="text-decoration:none">← Back</a><div class="pill" id="zoneCount"></div></div>
+  </header>
+
+  <main class="grid" id="homeView">
+    <section class="card hero">
+      <div class="eyebrow">Global knowledge game</div>
+      <div class="big">Race the clock.<br>Master the world.</div>
+      <p class="lead">Turn the supplied timezone dropdown into a fast, replayable challenge. Match cities to offsets, hunt cities by GMT, and build a streak before the clock runs out.</p>
+      <div class="actions">
+        <button class="btn" id="startBtn">Start 60-second run</button>
+        <button class="btn secondary" id="exploreBtn">Open world clock</button>
+      </div>
+      <p class="note" style="margin-top:18px">This game uses the GMT labels exactly as supplied. They are fixed-offset labels, not live daylight-saving rules.</p>
+    </section>
+
+    <aside class="card side">
+      <div>
+        <div class="eyebrow">Choose your mode</div>
+        <h2 style="margin:6px 0 14px">Game setup</h2>
+        <div class="mode-list">
+          <button class="mode-btn active" data-mode="offset"><strong>⚡ Offset Rush</strong><small>Pick the GMT offset for a location.</small></button>
+          <button class="mode-btn" data-mode="city"><strong>🌍 City Hunt</strong><small>Pick a matching location for an offset.</small></button>
+          <button class="mode-btn" data-mode="odd"><strong>🧩 Odd Zone Out</strong><small>Find the one location with a different offset.</small></button>
+        </div>
+      </div>
+      <div class="statgrid">
+        <div class="stat"><b id="bestScore">0</b><span>Best score</span></div>
+        <div class="stat"><b id="bestStreak">0</b><span>Best streak</span></div>
+        <div class="stat"><b>60s</b><span>Each run</span></div>
+        <div class="stat"><b>4</b><span>Answer choices</span></div>
+      </div>
+    </aside>
+  </main>
+
+  <section class="card game" id="gameView">
+    <div class="hud">
+      <div class="stat"><b id="score">0</b><span>Score</span></div>
+      <div class="stat"><b id="streak">0</b><span>Streak</span></div>
+      <div class="stat"><b id="lives">❤️❤️❤️</b><span>Lives</span></div>
+      <div class="stat"><b id="time">60</b><span>Seconds</span></div>
+    </div>
+    <div class="progress"><i id="timeBar"></i></div>
+    <div class="prompt">
+      <div class="label" id="promptLabel">Choose the correct offset</div>
+      <div class="question" id="question"></div>
+      <div class="hint" id="hint">Use keys 1–4 or click an answer.</div>
+    </div>
+    <div class="choices" id="choices"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="actions" style="justify-content:center"><button class="btn secondary" id="quitBtn">End run</button></div>
+  </section>
+
+  <section class="card explorer" id="explorerView">
+    <div class="topbar">
+      <div><div class="eyebrow">Explorer mode</div><h2 style="margin:6px 0">Fixed-offset world clock</h2></div>
+      <button class="btn secondary" id="backBtn">Back</button>
+    </div>
+    <div class="explorer-grid">
+      <div>
+        <label for="zoneSelect" class="sub">Choose a location</label>
+        <select id="zoneSelect"></select>
+        <div class="clock" style="margin-top:14px">
+          <div id="clockZone" class="eyebrow"></div>
+          <div class="clock-time" id="clockTime"></div>
+          <div class="clock-date" id="clockDate"></div>
+        </div>
+      </div>
+      <div>
+        <h3>Offset map</h3>
+        <p class="sub">Jump across the planet from GMT−12 to GMT+13.</p>
+        <div class="offset-track" id="offsetTrack"></div>
+        <div class="statgrid" style="margin-top:18px">
+          <div class="stat"><b id="sameOffsetCount">0</b><span>Locations sharing offset</span></div>
+          <div class="stat"><b id="clockOffset">GMT+00:00</b><span>Selected fixed offset</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="eyebrow">Run complete</div>
+    <h2 id="resultTitle">Nice work</h2>
+    <div class="final-score" id="finalScore">0</div>
+    <p class="sub" id="resultText"></p>
+    <div class="actions" style="justify-content:center">
+      <button class="btn" id="playAgain">Play again</button>
+      <button class="btn secondary" id="goHome">Home</button>
+    </div>
+  </div>
+</div>
+<div class="confetti" id="confetti"></div>
+
+<script>
+const zones = [{"name": "International Date Line West", "label": "(GMT-12:00) International Date Line West", "offset": -720}, {"name": "American Samoa", "label": "(GMT-11:00) American Samoa", "offset": -660}, {"name": "Midway Island", "label": "(GMT-11:00) Midway Island", "offset": -660}, {"name": "Hawaii", "label": "(GMT-10:00) Hawaii", "offset": -600}, {"name": "Alaska", "label": "(GMT-09:00) Alaska", "offset": -540}, {"name": "Pacific Time (US & Canada)", "label": "(GMT-08:00) Pacific Time (US & Canada)", "offset": -480}, {"name": "Tijuana", "label": "(GMT-08:00) Tijuana", "offset": -480}, {"name": "Arizona", "label": "(GMT-07:00) Arizona", "offset": -420}, {"name": "Mazatlan", "label": "(GMT-07:00) Mazatlan", "offset": -420}, {"name": "Mountain Time (US & Canada)", "label": "(GMT-07:00) Mountain Time (US & Canada)", "offset": -420}, {"name": "Central America", "label": "(GMT-06:00) Central America", "offset": -360}, {"name": "Central Time (US & Canada)", "label": "(GMT-06:00) Central Time (US & Canada)", "offset": -360}, {"name": "Chihuahua", "label": "(GMT-06:00) Chihuahua", "offset": -360}, {"name": "Guadalajara", "label": "(GMT-06:00) Guadalajara", "offset": -360}, {"name": "Mexico City", "label": "(GMT-06:00) Mexico City", "offset": -360}, {"name": "Monterrey", "label": "(GMT-06:00) Monterrey", "offset": -360}, {"name": "Saskatchewan", "label": "(GMT-06:00) Saskatchewan", "offset": -360}, {"name": "Bogota", "label": "(GMT-05:00) Bogota", "offset": -300}, {"name": "Eastern Time (US & Canada)", "label": "(GMT-05:00) Eastern Time (US & Canada)", "offset": -300}, {"name": "Indiana (East)", "label": "(GMT-05:00) Indiana (East)", "offset": -300}, {"name": "Lima", "label": "(GMT-05:00) Lima", "offset": -300}, {"name": "Quito", "label": "(GMT-05:00) Quito", "offset": -300}, {"name": "Atlantic Time (Canada)", "label": "(GMT-04:00) Atlantic Time (Canada)", "offset": -240}, {"name": "Caracas", "label": "(GMT-04:00) Caracas", "offset": -240}, {"name": "Georgetown", "label": "(GMT-04:00) Georgetown", "offset": -240}, {"name": "La Paz", "label": "(GMT-04:00) La Paz", "offset": -240}, {"name": "Puerto Rico", "label": "(GMT-04:00) Puerto Rico", "offset": -240}, {"name": "Santiago", "label": "(GMT-04:00) Santiago", "offset": -240}, {"name": "Newfoundland", "label": "(GMT-03:30) Newfoundland", "offset": -210}, {"name": "Asuncion", "label": "(GMT-03:00) Asuncion", "offset": -180}, {"name": "Brasilia", "label": "(GMT-03:00) Brasilia", "offset": -180}, {"name": "Buenos Aires", "label": "(GMT-03:00) Buenos Aires", "offset": -180}, {"name": "Montevideo", "label": "(GMT-03:00) Montevideo", "offset": -180}, {"name": "Greenland", "label": "(GMT-02:00) Greenland", "offset": -120}, {"name": "Mid-Atlantic", "label": "(GMT-02:00) Mid-Atlantic", "offset": -120}, {"name": "Azores", "label": "(GMT-01:00) Azores", "offset": -60}, {"name": "Cape Verde Is.", "label": "(GMT-01:00) Cape Verde Is.", "offset": -60}, {"name": "Edinburgh", "label": "(GMT+00:00) Edinburgh", "offset": 0}, {"name": "Lisbon", "label": "(GMT+00:00) Lisbon", "offset": 0}, {"name": "London", "label": "(GMT+00:00) London", "offset": 0}, {"name": "Monrovia", "label": "(GMT+00:00) Monrovia", "offset": 0}, {"name": "UTC", "label": "(GMT+00:00) UTC", "offset": 0}, {"name": "Amsterdam", "label": "(GMT+01:00) Amsterdam", "offset": 60}, {"name": "Belgrade", "label": "(GMT+01:00) Belgrade", "offset": 60}, {"name": "Berlin", "label": "(GMT+01:00) Berlin", "offset": 60}, {"name": "Bern", "label": "(GMT+01:00) Bern", "offset": 60}, {"name": "Bratislava", "label": "(GMT+01:00) Bratislava", "offset": 60}, {"name": "Brussels", "label": "(GMT+01:00) Brussels", "offset": 60}, {"name": "Budapest", "label": "(GMT+01:00) Budapest", "offset": 60}, {"name": "Casablanca", "label": "(GMT+01:00) Casablanca", "offset": 60}, {"name": "Copenhagen", "label": "(GMT+01:00) Copenhagen", "offset": 60}, {"name": "Dublin", "label": "(GMT+01:00) Dublin", "offset": 60}, {"name": "Ljubljana", "label": "(GMT+01:00) Ljubljana", "offset": 60}, {"name": "Madrid", "label": "(GMT+01:00) Madrid", "offset": 60}, {"name": "Paris", "label": "(GMT+01:00) Paris", "offset": 60}, {"name": "Prague", "label": "(GMT+01:00) Prague", "offset": 60}, {"name": "Rome", "label": "(GMT+01:00) Rome", "offset": 60}, {"name": "Sarajevo", "label": "(GMT+01:00) Sarajevo", "offset": 60}, {"name": "Skopje", "label": "(GMT+01:00) Skopje", "offset": 60}, {"name": "Stockholm", "label": "(GMT+01:00) Stockholm", "offset": 60}, {"name": "Vienna", "label": "(GMT+01:00) Vienna", "offset": 60}, {"name": "Warsaw", "label": "(GMT+01:00) Warsaw", "offset": 60}, {"name": "West Central Africa", "label": "(GMT+01:00) West Central Africa", "offset": 60}, {"name": "Zagreb", "label": "(GMT+01:00) Zagreb", "offset": 60}, {"name": "Zurich", "label": "(GMT+01:00) Zurich", "offset": 60}, {"name": "Athens", "label": "(GMT+02:00) Athens", "offset": 120}, {"name": "Bucharest", "label": "(GMT+02:00) Bucharest", "offset": 120}, {"name": "Cairo", "label": "(GMT+02:00) Cairo", "offset": 120}, {"name": "Harare", "label": "(GMT+02:00) Harare", "offset": 120}, {"name": "Helsinki", "label": "(GMT+02:00) Helsinki", "offset": 120}, {"name": "Jerusalem", "label": "(GMT+02:00) Jerusalem", "offset": 120}, {"name": "Kaliningrad", "label": "(GMT+02:00) Kaliningrad", "offset": 120}, {"name": "Kyiv", "label": "(GMT+02:00) Kyiv", "offset": 120}, {"name": "Pretoria", "label": "(GMT+02:00) Pretoria", "offset": 120}, {"name": "Riga", "label": "(GMT+02:00) Riga", "offset": 120}, {"name": "Sofia", "label": "(GMT+02:00) Sofia", "offset": 120}, {"name": "Tallinn", "label": "(GMT+02:00) Tallinn", "offset": 120}, {"name": "Vilnius", "label": "(GMT+02:00) Vilnius", "offset": 120}, {"name": "Baghdad", "label": "(GMT+03:00) Baghdad", "offset": 180}, {"name": "Istanbul", "label": "(GMT+03:00) Istanbul", "offset": 180}, {"name": "Kuwait", "label": "(GMT+03:00) Kuwait", "offset": 180}, {"name": "Minsk", "label": "(GMT+03:00) Minsk", "offset": 180}, {"name": "Moscow", "label": "(GMT+03:00) Moscow", "offset": 180}, {"name": "Nairobi", "label": "(GMT+03:00) Nairobi", "offset": 180}, {"name": "Riyadh", "label": "(GMT+03:00) Riyadh", "offset": 180}, {"name": "St. Petersburg", "label": "(GMT+03:00) St. Petersburg", "offset": 180}, {"name": "Volgograd", "label": "(GMT+03:00) Volgograd", "offset": 180}, {"name": "Tehran", "label": "(GMT+03:30) Tehran", "offset": 210}, {"name": "Abu Dhabi", "label": "(GMT+04:00) Abu Dhabi", "offset": 240}, {"name": "Baku", "label": "(GMT+04:00) Baku", "offset": 240}, {"name": "Muscat", "label": "(GMT+04:00) Muscat", "offset": 240}, {"name": "Samara", "label": "(GMT+04:00) Samara", "offset": 240}, {"name": "Tbilisi", "label": "(GMT+04:00) Tbilisi", "offset": 240}, {"name": "Yerevan", "label": "(GMT+04:00) Yerevan", "offset": 240}, {"name": "Kabul", "label": "(GMT+04:30) Kabul", "offset": 270}, {"name": "Almaty", "label": "(GMT+05:00) Almaty", "offset": 300}, {"name": "Astana", "label": "(GMT+05:00) Astana", "offset": 300}, {"name": "Ekaterinburg", "label": "(GMT+05:00) Ekaterinburg", "offset": 300}, {"name": "Islamabad", "label": "(GMT+05:00) Islamabad", "offset": 300}, {"name": "Karachi", "label": "(GMT+05:00) Karachi", "offset": 300}, {"name": "Tashkent", "label": "(GMT+05:00) Tashkent", "offset": 300}, {"name": "Chennai", "label": "(GMT+05:30) Chennai", "offset": 330}, {"name": "Kolkata", "label": "(GMT+05:30) Kolkata", "offset": 330}, {"name": "Mumbai", "label": "(GMT+05:30) Mumbai", "offset": 330}, {"name": "New Delhi", "label": "(GMT+05:30) New Delhi", "offset": 330}, {"name": "Sri Jayawardenepura", "label": "(GMT+05:30) Sri Jayawardenepura", "offset": 330}, {"name": "Kathmandu", "label": "(GMT+05:45) Kathmandu", "offset": 345}, {"name": "Dhaka", "label": "(GMT+06:00) Dhaka", "offset": 360}, {"name": "Urumqi", "label": "(GMT+06:00) Urumqi", "offset": 360}, {"name": "Rangoon", "label": "(GMT+06:30) Rangoon", "offset": 390}, {"name": "Bangkok", "label": "(GMT+07:00) Bangkok", "offset": 420}, {"name": "Hanoi", "label": "(GMT+07:00) Hanoi", "offset": 420}, {"name": "Jakarta", "label": "(GMT+07:00) Jakarta", "offset": 420}, {"name": "Krasnoyarsk", "label": "(GMT+07:00) Krasnoyarsk", "offset": 420}, {"name": "Novosibirsk", "label": "(GMT+07:00) Novosibirsk", "offset": 420}, {"name": "Beijing", "label": "(GMT+08:00) Beijing", "offset": 480}, {"name": "Chongqing", "label": "(GMT+08:00) Chongqing", "offset": 480}, {"name": "Hong Kong", "label": "(GMT+08:00) Hong Kong", "offset": 480}, {"name": "Irkutsk", "label": "(GMT+08:00) Irkutsk", "offset": 480}, {"name": "Kuala Lumpur", "label": "(GMT+08:00) Kuala Lumpur", "offset": 480}, {"name": "Perth", "label": "(GMT+08:00) Perth", "offset": 480}, {"name": "Singapore", "label": "(GMT+08:00) Singapore", "offset": 480}, {"name": "Taipei", "label": "(GMT+08:00) Taipei", "offset": 480}, {"name": "Ulaanbaatar", "label": "(GMT+08:00) Ulaanbaatar", "offset": 480}, {"name": "Osaka", "label": "(GMT+09:00) Osaka", "offset": 540}, {"name": "Sapporo", "label": "(GMT+09:00) Sapporo", "offset": 540}, {"name": "Seoul", "label": "(GMT+09:00) Seoul", "offset": 540}, {"name": "Tokyo", "label": "(GMT+09:00) Tokyo", "offset": 540}, {"name": "Yakutsk", "label": "(GMT+09:00) Yakutsk", "offset": 540}, {"name": "Adelaide", "label": "(GMT+09:30) Adelaide", "offset": 570}, {"name": "Darwin", "label": "(GMT+09:30) Darwin", "offset": 570}, {"name": "Brisbane", "label": "(GMT+10:00) Brisbane", "offset": 600}, {"name": "Canberra", "label": "(GMT+10:00) Canberra", "offset": 600}, {"name": "Guam", "label": "(GMT+10:00) Guam", "offset": 600}, {"name": "Hobart", "label": "(GMT+10:00) Hobart", "offset": 600}, {"name": "Melbourne", "label": "(GMT+10:00) Melbourne", "offset": 600}, {"name": "Port Moresby", "label": "(GMT+10:00) Port Moresby", "offset": 600}, {"name": "Sydney", "label": "(GMT+10:00) Sydney", "offset": 600}, {"name": "Vladivostok", "label": "(GMT+10:00) Vladivostok", "offset": 600}, {"name": "Magadan", "label": "(GMT+11:00) Magadan", "offset": 660}, {"name": "New Caledonia", "label": "(GMT+11:00) New Caledonia", "offset": 660}, {"name": "Solomon Is.", "label": "(GMT+11:00) Solomon Is.", "offset": 660}, {"name": "Srednekolymsk", "label": "(GMT+11:00) Srednekolymsk", "offset": 660}, {"name": "Auckland", "label": "(GMT+12:00) Auckland", "offset": 720}, {"name": "Fiji", "label": "(GMT+12:00) Fiji", "offset": 720}, {"name": "Kamchatka", "label": "(GMT+12:00) Kamchatka", "offset": 720}, {"name": "Marshall Is.", "label": "(GMT+12:00) Marshall Is.", "offset": 720}, {"name": "Wellington", "label": "(GMT+12:00) Wellington", "offset": 720}, {"name": "Chatham Is.", "label": "(GMT+12:45) Chatham Is.", "offset": 765}, {"name": "Nuku'alofa", "label": "(GMT+13:00) Nuku'alofa", "offset": 780}, {"name": "Samoa", "label": "(GMT+13:00) Samoa", "offset": 780}, {"name": "Tokelau Is.", "label": "(GMT+13:00) Tokelau Is.", "offset": 780}];
+const state = {
+  mode:'offset', score:0, streak:0, bestRunStreak:0, lives:3, time:60,
+  timer:null, active:false, locked:false, answer:null
+};
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const unique = a => [...new Set(a)];
+const shuffle = a => [...a].sort(() => Math.random() - .5);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const fmtOffset = mins => {
+  const sign = mins >= 0 ? '+' : '-';
+  const n = Math.abs(mins);
+  return `GMT${sign}${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;
+};
+const best = {
+  score:Number(localStorage.getItem('chrono-best-score')||0),
+  streak:Number(localStorage.getItem('chrono-best-streak')||0)
+};
+$('#bestScore').textContent=best.score;
+$('#bestStreak').textContent=best.streak;
+$('#zoneCount').textContent=`${zones.length} locations • ${unique(zones.map(z=>z.offset)).length} offsets`;
+
+function show(view){
+  ['homeView','gameView','explorerView'].forEach(id=>$('#'+id).style.display='none');
+  $('#'+view).style.display = view==='homeView' ? 'grid' : 'block';
+}
+
+$$('.mode-btn').forEach(btn=>btn.onclick=()=>{
+  $$('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); state.mode=btn.dataset.mode;
+});
+
+function startGame(){
+  state.score=0; state.streak=0; state.bestRunStreak=0; state.lives=3; state.time=60; state.active=true; state.locked=false;
+  $('#score').textContent=0; $('#streak').textContent=0; $('#lives').textContent='❤️❤️❤️'; $('#time').textContent=60; $('#feedback').textContent='';
+  show('gameView'); nextQuestion();
+  clearInterval(state.timer);
+  state.timer=setInterval(()=>{
+    state.time--; $('#time').textContent=state.time;
+    $('#timeBar').style.transform=`scaleX(${Math.max(0,state.time/60)})`;
+    if(state.time<=0) endGame();
+  },1000);
+}
+
+function choicesForOffset(correct){
+  const offsets=shuffle(unique(zones.map(z=>z.offset)).filter(o=>o!==correct)).slice(0,3);
+  return shuffle([correct,...offsets]).map(v=>({label:fmtOffset(v),value:v}));
+}
+function choicesForCity(target){
+  const correct=pick(zones.filter(z=>z.offset===target));
+  const wrong=shuffle(zones.filter(z=>z.offset!==target)).slice(0,3);
+  state.answer=correct.name;
+  return shuffle([correct,...wrong]).map(z=>({label:z.name,value:z.name}));
+}
+function oddChoices(){
+  const base=pick(unique(zones.map(z=>z.offset).filter(o=>zones.filter(z=>z.offset===o).length>=3)));
+  const same=shuffle(zones.filter(z=>z.offset===base)).slice(0,3);
+  const odd=pick(zones.filter(z=>z.offset!==base));
+  state.answer=odd.name;
+  return {items:shuffle([...same,odd]).map(z=>({label:z.name,value:z.name})), base};
+}
+
+function nextQuestion(){
+  if(!state.active)return;
+  state.locked=false; $('#feedback').textContent='';
+  let items=[];
+  if(state.mode==='offset'){
+    const z=pick(zones); state.answer=z.offset;
+    $('#promptLabel').textContent='Choose the supplied GMT offset';
+    $('#question').textContent=z.name;
+    $('#hint').textContent='Which fixed offset belongs to this location?';
+    items=choicesForOffset(z.offset);
+  } else if(state.mode==='city'){
+    const target=pick(unique(zones.map(z=>z.offset))); state.answer=null;
+    $('#promptLabel').textContent='Choose a matching location';
+    $('#question').textContent=fmtOffset(target);
+    $('#hint').textContent='More than one place may share it; one valid answer is shown.';
+    items=choicesForCity(target);
+  } else {
+    const odd=oddChoices();
+    $('#promptLabel').textContent='Find the odd zone out';
+    $('#question').textContent=fmtOffset(odd.base);
+    $('#hint').textContent='Three match this offset. One does not.';
+    items=odd.items;
+  }
+  $('#choices').innerHTML='';
+  items.forEach((item,i)=>{
+    const b=document.createElement('button');
+    b.className='choice'; b.dataset.value=item.value; b.innerHTML=`<span class="key">${i+1}</span>${item.label}`;
+    b.onclick=()=>answer(b,item.value);
+    $('#choices').appendChild(b);
+  });
+}
+
+function answer(btn,value){
+  if(state.locked||!state.active)return;
+  state.locked=true;
+  const ok=String(value)===String(state.answer);
+  if(ok){
+    state.streak++; state.bestRunStreak=Math.max(state.bestRunStreak,state.streak);
+    const bonus=Math.min(50,state.streak*5); state.score += 100+bonus;
+    btn.classList.add('correct'); $('#feedback').textContent=`Correct! +${100+bonus}`;
+    $('#feedback').style.color='var(--good)'; ping(740,.08); burst(18);
+  } else {
+    state.streak=0; state.lives--;
+    btn.classList.add('wrong'); $('#feedback').textContent=`Not quite — ${displayAnswer()}`;
+    $('#feedback').style.color='var(--bad)'; ping(180,.12);
+    $$('.choice').forEach(b=>{if(String(b.dataset.value)===String(state.answer)) b.classList.add('correct')});
+  }
+  $('#score').textContent=state.score; $('#streak').textContent=state.streak;
+  $('#lives').textContent='❤️'.repeat(Math.max(0,state.lives))+'🖤'.repeat(Math.max(0,3-state.lives));
+  if(state.lives<=0) return setTimeout(endGame,700);
+  setTimeout(nextQuestion,720);
+}
+function displayAnswer(){
+  return state.mode==='offset' ? fmtOffset(Number(state.answer)) : state.answer;
+}
+function endGame(){
+  if(!state.active)return;
+  state.active=false; clearInterval(state.timer);
+  best.score=Math.max(best.score,state.score); best.streak=Math.max(best.streak,state.bestRunStreak);
+  localStorage.setItem('chrono-best-score',best.score); localStorage.setItem('chrono-best-streak',best.streak);
+  $('#bestScore').textContent=best.score; $('#bestStreak').textContent=best.streak;
+  $('#finalScore').textContent=state.score;
+  $('#resultTitle').textContent=state.score>=1500?'Timezone legend 🏆':state.score>=800?'Strong run 🌍':'Good launch 🚀';
+  $('#resultText').textContent=`Best streak: ${state.bestRunStreak}. Personal best: ${best.score}.`;
+  $('#overlay').style.display='grid';
+  if(state.score>=800) burst(80);
+}
+
+document.addEventListener('keydown',e=>{
+  if(!state.active)return;
+  const i=Number(e.key)-1; const btn=$$('.choice')[i]; if(btn)btn.click();
+});
+$('#startBtn').onclick=startGame;
+$('#quitBtn').onclick=endGame;
+$('#playAgain').onclick=()=>{$('#overlay').style.display='none';startGame()};
+$('#goHome').onclick=()=>{$('#overlay').style.display='none';show('homeView')};
+
+function ping(freq,duration){
+  try{
+    const C=window.AudioContext||window.webkitAudioContext, c=new C(), o=c.createOscillator(), g=c.createGain();
+    o.frequency.value=freq; g.gain.setValueAtTime(.05,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+duration);
+    o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+duration);
+  }catch(e){}
+}
+function burst(n){
+  const c=$('#confetti');
+  for(let i=0;i<n;i++){
+    const el=document.createElement('i'); el.style.left=Math.random()*100+'vw'; el.style.animationDelay=Math.random()*.35+'s';
+    el.style.transform=`rotate(${Math.random()*180}deg)`; el.style.background=pick(['#77e0ff','#b78cff','#57e389','#ffd166','#ff6b7a']);
+    c.appendChild(el); setTimeout(()=>el.remove(),2300);
+  }
+}
+
+function setupExplorer(){
+  const s=$('#zoneSelect');
+  s.innerHTML=zones.map((z,i)=>`<option value="${i}">${z.label}</option>`).join('');
+  const eastern=zones.findIndex(z=>z.name==='Eastern Time (US & Canada)');
+  s.value=eastern>=0?eastern:0;
+  const track=$('#offsetTrack');
+  const marks=[]; for(let h=-12;h<=13;h+=2)marks.push(h);
+  track.innerHTML=marks.map(h=>`<span data-hour="${h}">${h>0?'+':''}${h}</span>`).join('');
+  s.onchange=updateClock; updateClock();
+}
+function updateClock(){
+  const z=zones[Number($('#zoneSelect').value)];
+  const now=new Date(Date.now()+z.offset*60000);
+  $('#clockTime').textContent=now.toISOString().slice(11,19);
+  $('#clockDate').textContent=now.toUTCString().replace(/\d{2}:\d{2}:\d{2} GMT/,'').trim();
+  $('#clockZone').textContent=z.name;
+  $('#clockOffset').textContent=fmtOffset(z.offset);
+  $('#sameOffsetCount').textContent=zones.filter(x=>x.offset===z.offset).length;
+  $$('#offsetTrack span').forEach(x=>x.classList.toggle('hot',Math.abs(Number(x.dataset.hour)-z.offset/60)<1.1));
+}
+setInterval(()=>{if($('#explorerView').style.display==='block')updateClock()},1000);
+$('#exploreBtn').onclick=()=>{show('explorerView');updateClock()};
+$('#backBtn').onclick=()=>show('homeView');
+const back=$('#suiteBack');
+if(location.hostname.toLowerCase().includes('gogames')){back.href='/';back.textContent='← GoGames';}
+else {back.href='../index.html';back.textContent='← FieldKit';}
+setupExplorer();
+</script>
+</body>
+</html>

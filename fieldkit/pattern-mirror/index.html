@@ -1,0 +1,546 @@
+<!-- Filename: games/pattern-mirror.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pattern Mirror — Brain Games</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#161a2e; --accent:#6ee7ff; --accent2:#b388ff; --good:#19d77f; --bad:#ff5c7a;
+    --tile:#212642; --tile-hi:#3c4270; --tile-flash:#e9fbff; --tile-correct:#1ed299; --tile-wrong:#ff6b81;
+    --text:#e8ecff; --muted:#9aa4d6; --ring:#7dd3fc55; --tile-shadow: 0 6px 18px rgba(0,0,0,.35);
+  }
+  html,body{height:100%;background:linear-gradient(160deg,#0b0e1a,#12172b 40%,#0b0e1a);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;margin:0}
+  .wrap{max-width:980px;margin:0 auto;padding:16px 16px 96px}
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;margin:8px 0 12px}
+  .title{font-weight:800;letter-spacing:.3px;display:flex;align-items:center;gap:10px}
+  .badge{font-size:12px;padding:4px 8px;border-radius:999px;background:linear-gradient(90deg,var(--accent2),var(--accent));color:#0b0f1a;font-weight:700}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .controls > *{background:var(--panel);border:1px solid #2a3055;border-radius:10px;padding:8px 10px;color:var(--text)}
+  .btn{cursor:pointer;border:1px solid #35407e;background:linear-gradient(180deg,#242a4a,#1c2240);box-shadow:inset 0 1px 0 #4d58a655,0 4px 16px #00000030;border-radius:12px}
+  .btn:hover{filter:brightness(1.05)}
+  .btn:active{transform:translateY(1px)}
+  .grid-holder{display:grid;grid-template-columns:1fr 340px;gap:18px}
+  @media (max-width:980px){.grid-holder{grid-template-columns:1fr}}
+  .board{
+    aspect-ratio:1/1;width:100%;background:linear-gradient(180deg,#141834,#0d122b);
+    border:1px solid #27305d;border-radius:16px;display:grid;gap:8px;padding:8px;box-shadow:0 16px 40px #00000035,inset 0 0 0 1px #ffffff08
+  }
+  .tile{
+    background:var(--tile);border:1px solid #2b315b;border-radius:12px;box-shadow:var(--tile-shadow);
+    display:grid;place-items:center;user-select:none;position:relative;transition:transform .06s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease;
+    outline:none;
+  }
+  .tile:hover{transform:translateY(-2px)}
+  .tile:focus-visible{box-shadow:0 0 0 3px var(--ring), var(--tile-shadow)}
+  .tile .idx{position:absolute;top:6px;left:8px;font-size:11px;color:var(--muted)}
+  .tile.flash{background:var(--tile-flash);color:#0a0a0a;border-color:#c6f3ff;box-shadow:0 0 0 3px #88e8ff66, var(--tile-shadow)}
+  .tile.correct{background:var(--tile-correct);color:#001a0f;border-color:#17b87a}
+  .tile.wrong{background:var(--tile-wrong);color:#1a0006;border-color:#cc4f61}
+  .side{
+    background:linear-gradient(180deg,#161a33,#12162d);border:1px solid #28305a;border-radius:16px;padding:14px 14px;
+    box-shadow:0 16px 40px #00000030,inset 0 0 0 1px #ffffff08
+  }
+  .row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:8px 0}
+  .row label{font-size:13px;color:var(--muted)}
+  .row strong{font-weight:800;letter-spacing:.2px}
+  .slider{appearance:none;width:100%;height:10px;border-radius:999px;background:#263059;outline:none}
+  .slider::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#b388ff,#6ee7ff);border:2px solid #0d1222;cursor:pointer;box-shadow:0 2px 10px #00000050}
+  .select{appearance:none;padding:8px 12px;border-radius:10px;background:var(--panel);border:1px solid #2a3055;color:var(--text)}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat{background:#111529;border:1px solid #252b52;border-radius:12px;padding:10px}
+  .stat .k{font-size:12px;color:var(--muted)}
+  .stat .v{font-size:20px;font-weight:800}
+  .logs{height:140px;overflow:auto;background:#0f1430;border:1px solid #243158;border-radius:12px;padding:8px;font-size:12px;color:#aab3e6}
+  .hint{font-size:12px;color:var(--muted)}
+  .footer{position:fixed;inset:auto 0 0 0;background:linear-gradient(180deg,#0b0f1f,#0a0d1a);border-top:1px solid #1b2150;padding:8px 16px;color:#9fb4ff;font-size:12px}
+  /* Overlay */
+  .overlay{position:fixed;inset:0;display:none;place-items:center;background:rgba(6,9,20,.64);backdrop-filter:blur(4px);z-index:50}
+  .overlay.show{display:grid}
+  .card{
+    width:min(560px,92vw);
+    background:linear-gradient(180deg,#151a36,#0f1330);border:1px solid #2a3162;border-radius:18px;padding:18px;
+    box-shadow:0 24px 70px rgba(0,0,0,.6), inset 0 0 0 1px #ffffff0a
+  }
+  .cele{font-size:28px;font-weight:900;letter-spacing:.3px;margin:2px 0 6px;background:linear-gradient(90deg,#6ee7ff,#b388ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:#c6cef8;margin:0 0 8px}
+  .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+  .act{padding:10px 14px;border-radius:12px;border:1px solid #35407e;background:linear-gradient(180deg,#242a4a,#1c2240);color:var(--text);font-weight:700;cursor:pointer}
+  .act.primary{background:linear-gradient(180deg,#35e2ff,#9b7cff);color:#08111b}
+  /* Tier dotline */
+  .tiers{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chip{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid #2a3162;background:#121739;color:#c9d4ff;opacity:.8}
+  .chip.on{background:linear-gradient(180deg,#86f0ff,#c7b2ff);color:#06121b;opacity:1}
+  /* Visually-hidden for aria-live offscreen text */
+  .visually-hidden{position:absolute !important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
+
+/* Suite nav */
+.suite-nav{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:hsl(222,30%,10%);border-bottom:1px solid hsl(222,15%,20%);font-size:12px;font-family:'DM Sans',system-ui,sans-serif}
+.suite-nav a{color:hsl(215,15%,55%);text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .15s}
+.suite-nav a:hover{color:hsl(160,60%,45%)}
+.suite-nav .suite-name{color:hsl(215,10%,40%);font-family:'DM Mono',monospace;font-size:11px}
+</style>
+</head>
+<body>
+<nav class="suite-nav">
+  <a href="../index.html">← Back to FieldKit</a>
+  <span class="suite-name">FieldKit</span>
+</nav>
+
+<div class="wrap">
+  <header>
+    <div class="title">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2l3 5-3 5-3-5 3-5Zm0 10l7 10H5l7-10Z" stroke="#6ee7ff" stroke-width="1.4" fill="#6ee7ff22"/>
+      </svg>
+      <div>
+        <div style="font-size:22px;font-weight:900;line-height:1">Pattern Mirror</div>
+        <div class="badge" id="tierBadge">Seed</div>
+      </div>
+    </div>
+    <div class="controls" role="group" aria-label="Game controls">
+      <button class="btn" id="startBtn" aria-label="Start or Restart game">Start</button>
+      <label>Size&nbsp;
+        <select class="select" id="sizeSel" aria-label="Board size">
+          <option value="3">3x3</option>
+          <option value="4">4x4</option>
+          <option value="5">5x5</option>
+        </select>
+      </label>
+      <label title="Flash speed">Speed&nbsp;
+        <input type="range" min="0" max="100" value="50" id="speed" class="slider" aria-label="Speed (left slower, right faster)">
+      </label>
+    </div>
+  </header>
+
+  <div class="grid-holder">
+    <main>
+      <section aria-label="Game board">
+        <div id="board" class="board" role="grid" aria-label="Pattern grid"></div>
+      </section>
+    </main>
+
+    <aside class="side" aria-label="Status and stats">
+      <div class="row"><strong>Tier</strong><span id="tierName">Seed</span></div>
+      <div class="tiers" id="tierChips"></div>
+      <div class="row"><strong>Target</strong><span id="tierTarget">6 moves</span></div>
+
+      <div class="stats" style="margin-top:8px">
+        <div class="stat">
+          <div class="k">Current streak</div>
+          <div class="v" id="streak">0</div>
+        </div>
+        <div class="stat">
+          <div class="k">Best streak</div>
+          <div class="v" id="best">0</div>
+        </div>
+        <div class="stat">
+          <div class="k">Highest tier</div>
+          <div class="v" id="hiTier">Seed</div>
+        </div>
+        <div class="stat">
+          <div class="k">Board size</div>
+          <div class="v" id="szLabel">3x3</div>
+        </div>
+      </div>
+
+      <p class="hint">Input: click tiles, or use <strong>arrow keys</strong> to move focus and <strong>Enter</strong> to select. You can also press numbers <strong>1-25</strong> when available.</p>
+      <div class="logs" id="log" aria-live="polite" aria-atomic="true"></div>
+      <div id="ariaLive" class="visually-hidden" aria-live="polite"></div>
+    </aside>
+  </div>
+</div>
+
+<!-- Celebratory / Game Over Overlay -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ovlTitle">
+  <div class="card">
+    <div id="ovlTitle" class="cele">You held 0 moves!</div>
+    <p class="sub" id="ovlSubtitle">Continue or Level Up?</p>
+    <div class="actions">
+      <button class="act primary" id="ovlContinue">Continue</button>
+      <button class="act" id="ovlLevelUp">Level Up</button>
+      <button class="act" id="ovlRetry">Retry</button>
+      <button class="act" id="ovlClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Tip: Use the speed slider to fine-tune flash timing. The game auto-sends <code>postMessage</code> updates to the parent window when embedded.</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Tier System (neutral 10-tier) ---------- */
+  const TIERS = [
+    {name:"Seed",    target:6,  hue:190},
+    {name:"Sprout",  target:7,  hue:130},
+    {name:"Ember",   target:8,  hue:15},
+    {name:"Tide",    target:9,  hue:205},
+    {name:"Stone",   target:10, hue:230},
+    {name:"Gale",    target:11, hue:160},
+    {name:"Nova",    target:12, hue:35},
+    {name:"Aether",  target:13, hue:265},
+    {name:"Aurora",  target:14, hue:290},
+    {name:"Zenith",  target:15, hue:320},
+  ];
+  const LS_KEYS = {
+    best: "pm_best_streak",
+    hiTierIdx: "pm_highest_tier_index"
+  };
+
+  /* ---------- State ---------- */
+  let size = 3;
+  let gridEls = [];
+  let sequence = [];
+  let userPos = 0;
+  let accepting = false;
+  let streak = 0;
+  let bestStreak = Number(localStorage.getItem(LS_KEYS.best) || 0);
+  let tierIdx = Number(localStorage.getItem(LS_KEYS.hiTierIdx) || 0); // default Seed
+  let currentTier = TIERS[tierIdx];
+  let focusedIndex = 0; // keyboard navigation
+  let flashing = false;
+
+  /* ---------- DOM ---------- */
+  const board = document.getElementById('board');
+  const logEl = document.getElementById('log');
+  const ariaLive = document.getElementById('ariaLive');
+  const startBtn = document.getElementById('startBtn');
+  const sizeSel = document.getElementById('sizeSel');
+  const speed = document.getElementById('speed');
+  const tierBadge = document.getElementById('tierBadge');
+  const tierName = document.getElementById('tierName');
+  const tierTarget = document.getElementById('tierTarget');
+  const streakEl = document.getElementById('streak');
+  const bestEl = document.getElementById('best');
+  const hiTierEl = document.getElementById('hiTier');
+  const szLabel = document.getElementById('szLabel');
+  const tierChips = document.getElementById('tierChips');
+
+  const overlay = document.getElementById('overlay');
+  const ovlTitle = document.getElementById('ovlTitle');
+  const ovlSubtitle = document.getElementById('ovlSubtitle');
+  const ovlContinue = document.getElementById('ovlContinue');
+  const ovlLevelUp = document.getElementById('ovlLevelUp');
+  const ovlRetry = document.getElementById('ovlRetry');
+  const ovlClose = document.getElementById('ovlClose');
+
+  /* ---------- Utils ---------- */
+  const randInt = n => Math.floor(Math.random()*n);
+  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+  const now = ()=>new Date().toLocaleTimeString();
+  function log(msg){
+    const line = document.createElement('div');
+    line.textContent = `[${now()}] ${msg}`;
+    logEl.prepend(line);
+  }
+  function speak(msg){
+    ariaLive.textContent = msg;
+  }
+  function speedMs(){
+    // Map slider [0..100] to flash and gap durations
+    // slower on left, faster on right
+    const val = Number(speed.value);
+    const flash = Math.round(600 - val*3.5); // 600..250
+    const gap   = Math.round(360 - val*2.2); // 360..140
+    return {flash, gap};
+  }
+  function sendMeta(){
+    try{
+      window.parent.postMessage({type:'game_meta', title:'Pattern Mirror', tier: currentTier.name}, '*');
+    }catch{}
+  }
+  function sendScore(){
+    try{
+      window.parent.postMessage({type:'score_update', score: streak}, '*');
+    }catch{}
+  }
+  function sendGameOver(result, nextTierName){
+    try{
+      window.parent.postMessage({type:'game_over', result, tierNext: nextTierName || null}, '*');
+    }catch{}
+  }
+
+  /* ---------- Board ---------- */
+  function buildBoard(){
+    board.innerHTML = '';
+    board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+    gridEls = [];
+    const total = size*size;
+    for(let i=0;i<total;i++){
+      const btn = document.createElement('button');
+      btn.className = 'tile';
+      btn.type='button';
+      btn.setAttribute('role','gridcell');
+      btn.setAttribute('data-idx', i);
+      btn.setAttribute('aria-label', `Cell ${i+1}`);
+      btn.innerHTML = `<span class="idx">${i+1}</span>`;
+      btn.addEventListener('click', ()=>tileActivate(i));
+      btn.addEventListener('keydown', (e)=>{
+        // allow Enter to select from button too
+        if(e.key==='Enter'){ e.preventDefault(); tileActivate(i); }
+      });
+      gridEls.push(btn);
+      board.appendChild(btn);
+    }
+    focusedIndex = 0;
+    gridEls[0]?.focus();
+    szLabel.textContent = `${size}x${size}`;
+  }
+
+  /* ---------- Tiers UI ---------- */
+  function renderTiers(){
+    tierChips.innerHTML = '';
+    TIERS.forEach((t,idx)=>{
+      const chip = document.createElement('span');
+      chip.className = 'chip'+(idx<=tierIdx?' on':'');
+      chip.textContent = t.name;
+      tierChips.appendChild(chip);
+    });
+    tierBadge.textContent = currentTier.name;
+    tierName.textContent = currentTier.name;
+    tierTarget.textContent = `${currentTier.target} moves`;
+    hiTierEl.textContent = TIERS[Number(localStorage.getItem(LS_KEYS.hiTierIdx) || 0)].name;
+    // Subtle theming hint based on tier hue
+    document.documentElement.style.setProperty('--accent', `hsl(${currentTier.hue} 95% 70%)`);
+  }
+
+  /* ---------- Game Core ---------- */
+  function resetRound(){
+    sequence = [];
+    userPos = 0;
+    streak = 0;
+    setAccepting(false);
+    updateStats();
+  }
+  function setAccepting(v){
+    accepting = v;
+    board.setAttribute('aria-disabled', v? 'false': 'true');
+  }
+  function updateStats(){
+    streakEl.textContent = String(streak);
+    bestEl.textContent = String(bestStreak);
+    sendScore();
+  }
+  function pushNext(){
+    sequence.push(randInt(size*size));
+  }
+
+  async function flashOne(idx, flashDur){
+    const el = gridEls[idx];
+    if(!el) return;
+    el.classList.add('flash');
+    await waitMs(flashDur);
+    el.classList.remove('flash');
+  }
+  function waitMs(ms){ return new Promise(res=>setTimeout(res, ms)); }
+
+  async function showSequence(){
+    flashing = true;
+    const {flash, gap} = speedMs();
+    setAccepting(false);
+    for(let i=0;i<sequence.length;i++){
+      await flashOne(sequence[i], flash);
+      await waitMs(gap);
+    }
+    flashing = false;
+    setAccepting(true);
+    speak('Your turn');
+    log(`Repeat ${sequence.length} move${sequence.length>1?'s':''}`);
+  }
+
+  function tileActivate(idx){
+    if(!accepting) return;
+    // visual press
+    const t = gridEls[idx];
+    t.classList.add('correct');
+    setTimeout(()=>t.classList.remove('correct'),120);
+
+    // check
+    if(sequence[userPos] === idx){
+      userPos++;
+      if(userPos === sequence.length){
+        // completed this round
+        streak++;
+        if(streak > bestStreak){
+          bestStreak = streak;
+          localStorage.setItem(LS_KEYS.best, String(bestStreak));
+        }
+        updateStats();
+        speak('Good');
+        log(`Good — streak ${streak}`);
+        // Tier check
+        if(streak >= currentTier.target){
+          // Finished the tier
+          onTierFinish();
+          return;
+        }
+        // continue pattern
+        setAccepting(false);
+        userPos = 0;
+        pushNext();
+        // tiny pause before next show
+        const pause = Math.max(320, speedMs().gap + 80);
+        setTimeout(()=>showSequence(), pause);
+      }
+    }else{
+      // wrong
+      wrongFX(idx);
+      gameOver(false);
+    }
+  }
+
+  function wrongFX(idx){
+    const el = gridEls[idx];
+    el.classList.add('wrong');
+    setTimeout(()=>el.classList.remove('wrong'), 350);
+  }
+
+  function gameOver(won){
+    setAccepting(false);
+    speak(won? 'Win': 'Fail');
+    log(won? 'You finished this tier!':'Oops — that was wrong.');
+    // Offer retry in overlay
+    showOverlay({
+      title: won? `Tier complete — ${currentTier.name}!` : `You held ${streak} moves!`,
+      sub: won? 'Continue to push your streak or Level Up to the next tier.' : 'Continue or Level Up?',
+      showContinue: true,
+      showLevel: true,
+      showRetry: true
+    });
+    // message to parent
+    const nextTierName = TIERS[Math.min(tierIdx+1, TIERS.length-1)].name;
+    sendGameOver(won ? 'win' : 'fail', nextTierName);
+  }
+
+  function onTierFinish(){
+    // Unlock next tier in localStorage if higher
+    if(tierIdx < TIERS.length-1){
+      const prevHi = Number(localStorage.getItem(LS_KEYS.hiTierIdx) || 0);
+      if((tierIdx+1) > prevHi){
+        localStorage.setItem(LS_KEYS.hiTierIdx, String(tierIdx+1));
+      }
+    }
+    showOverlay({
+      title: `You held ${streak} moves!`,
+      sub: 'Continue or Level Up?',
+      showContinue: true,
+      showLevel: true,
+      showRetry: true
+    });
+    sendGameOver('win', TIERS[Math.min(tierIdx+1, TIERS.length-1)].name);
+  }
+
+  function startGame(){
+    resetRound();
+    // small seed to make early rounds readable: ensure first few distinct? (optional)
+    pushNext();
+    showSequence();
+    startBtn.textContent = 'Restart';
+  }
+
+  /* ---------- Overlay ---------- */
+  function showOverlay({title, sub, showContinue, showLevel, showRetry}){
+    ovlTitle.textContent = title || `You held ${streak} moves!`;
+    ovlSubtitle.textContent = sub || 'Continue or Level Up?';
+    overlay.classList.add('show');
+    ovlContinue.style.display = showContinue? 'inline-flex':'none';
+    ovlLevelUp.style.display = showLevel? 'inline-flex':'none';
+    ovlRetry.style.display = showRetry? 'inline-flex':'none';
+  }
+  function hideOverlay(){ overlay.classList.remove('show'); }
+
+  ovlContinue.addEventListener('click', ()=>{
+    hideOverlay();
+    // keep same tier; extend sequence by one and continue
+    userPos = 0;
+    pushNext();
+    showSequence();
+  });
+  ovlLevelUp.addEventListener('click', ()=>{
+    hideOverlay();
+    if(tierIdx < TIERS.length-1){
+      tierIdx++;
+      currentTier = TIERS[tierIdx];
+      localStorage.setItem(LS_KEYS.hiTierIdx, String(Math.max(tierIdx, Number(localStorage.getItem(LS_KEYS.hiTierIdx)||0))));
+      renderTiers();
+      sendMeta();
+    }
+    startGame();
+  });
+  ovlRetry.addEventListener('click', ()=>{
+    hideOverlay();
+    startGame();
+  });
+  ovlClose.addEventListener('click', hideOverlay);
+
+  /* ---------- Keyboard Controls ---------- */
+  function moveFocus(dx, dy){
+    const col = focusedIndex % size;
+    const row = Math.floor(focusedIndex / size);
+    let nc = clamp(col + dx, 0, size-1);
+    let nr = clamp(row + dy, 0, size-1);
+    focusedIndex = nr*size + nc;
+    gridEls[focusedIndex]?.focus();
+  }
+  window.addEventListener('keydown', (e)=>{
+    if(document.activeElement === speed || document.activeElement === sizeSel) return;
+    if(flashing) return;
+
+    // arrows to navigate
+    if(e.key==="ArrowLeft"){ e.preventDefault(); moveFocus(-1,0); }
+    else if(e.key==="ArrowRight"){ e.preventDefault(); moveFocus(1,0); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); moveFocus(0,-1); }
+    else if(e.key==="ArrowDown"){ e.preventDefault(); moveFocus(0,1); }
+    else if(e.key==="Enter"){ e.preventDefault(); tileActivate(focusedIndex); }
+    else {
+      // number keys 1..25 map to cells
+      const n = parseInt(e.key,10);
+      if(!isNaN(n)){
+        const idx = n-1;
+        if(idx>=0 && idx < size*size){
+          gridEls[idx]?.focus();
+          tileActivate(idx);
+        }
+      }
+    }
+  });
+
+  /* ---------- Events ---------- */
+  startBtn.addEventListener('click', startGame);
+  sizeSel.addEventListener('change', ()=>{
+    size = Number(sizeSel.value);
+    buildBoard();
+  });
+  speed.addEventListener('input', ()=>{/* live changes pick up next cycle */});
+
+  /* ---------- Init ---------- */
+  (function init(){
+    // restore tier index (highest reachable). Start current tier at saved index.
+    tierIdx = Number(localStorage.getItem(LS_KEYS.hiTierIdx) || 0);
+    currentTier = TIERS[tierIdx];
+    bestEl.textContent = String(bestStreak);
+    buildBoard();
+    renderTiers();
+    log('Ready. Press Start to begin.');
+    speak('Pattern Mirror ready.');
+    sendMeta();
+  })();
+
+  // Expose for potential debugging in parent (optional)
+  window.PatternMirror = {
+    get tier(){ return currentTier.name; },
+    get streak(){ return streak; },
+    get best(){ return bestStreak; },
+    setTier(i){ tierIdx = clamp(i,0,TIERS.length-1); currentTier = TIERS[tierIdx]; renderTiers(); sendMeta(); },
+    start: startGame
+  };
+
+})();
+</script>
+  <script src="../shared/help-content.js"></script>
+  <script src="../shared/f1-help-nav.js"></script>
+</body>
+</html>
