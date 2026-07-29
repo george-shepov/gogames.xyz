@@ -1,11 +1,13 @@
 {
   "name": "gogames-xyz-server",
   "version": "1.0.0",
-  "description": "GoGames.XYZ backend — multiplayer rooms, Stripe payments, GGX token ledger",
+  "description": "GoGames.XYZ backend — multiplayer, Stripe utility credits, and server-verified reward claims",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js",
+    "check": "node --check server.js && node --check reward-engine.js && npm test"
   },
   "dependencies": {
     "cors": "^2.8.5",

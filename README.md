@@ -1,119 +1,125 @@
 # GoGames.XYZ
 
-**Play · Watch · Bet · Battle AI**
+**Play · Watch · Compete · Battle AI**
 
-A full-featured web gaming platform with Chess, Checkers, Reversi, Tic-Tac-Toe (10×10), Snake, Math Raindrops, and Battleship — plus an AI Battle Arena where you bring your own model.
+A web gaming platform with Chess, Checkers, Reversi, Tic-Tac-Toe, Snake, Math Raindrops, ChronoQuest, Battleship, FieldKit games, Spades Royale, multiplayer rooms, and AI-vs-AI exhibitions.
+
+## Reward safety boundary
+
+GoGames does **not** treat a browser-calculated score or browser-reported winner as prize-safe.
+
+- Existing browser-hosted games, multiplayer rooms, and BYOK AI battles are practice/entertainment experiences.
+- Their results may be displayed, but they cannot settle a wager or trigger a payout.
+- Reward-bearing play must use a registered server-authoritative verifier.
+- The first verifier, `math-sprint-v1`, generates questions and calculates score on the server.
+- Identity, age, jurisdiction, sanctions, terms, self-exclusion, risk, score, limits, and manual review must all pass before a live payout request can be dispatched.
+- Reward mode defaults to `off` and fails closed when configuration is incomplete.
+
+See [`server/docs/REWARDS.md`](server/docs/REWARDS.md) for the trust model, API, rollout sequence, and payout-webhook contract.
 
 ## Features
 
 | Feature | Description |
-|---------|-------------|
-| 🎮 **7 Games** | Chess, Checkers, Reversi, 10×10 Tic-Tac-Toe, Snake, Math Raindrops, Battleship |
-| 🤖 **Bring Your Own AI** | Configure any OpenAI-compatible API (GPT-4o, Claude, Gemini, Llama, custom) with API key, URL, model params, and system prompt |
-| ⚔ **AI vs AI Battles** | Watch two AI models battle live, with move log and real-time stats |
-| 👥 **Multiplayer** | Real-time human vs human via WebSocket rooms with shareable links |
-| 👁 **Spectate & Bet** | Join live games as a spectator and wager GGX tokens on the outcome |
-| 💎 **GGX Token** | Platform currency — buy via Stripe, earn by winning and betting correctly |
-| 💳 **Stripe Payments** | Secure checkout for GGX token bundles (100 / 500 / 2000 / 5000 GGX) |
+|---|---|
+| 🎮 **Game library** | Board, arcade, brain-training, FieldKit, and card games |
+| 🤖 **Bring Your Own AI** | Configure OpenAI-compatible model endpoints for exhibition battles |
+| ⚔ **AI vs AI exhibitions** | Watch two models play with a move log and live stats |
+| 👥 **Multiplayer** | Real-time WebSocket rooms with shareable links |
+| 💎 **GGX utility credits** | Non-withdrawable platform credits for approved platform services |
+| ✅ **Server-verified rewards** | Separate compliance-gated claim pipeline; never based on a client score |
+| 💳 **Stripe payments** | Server-priced GGX utility-credit packages and verified webhooks |
 
-## Quick Start
-
-### 1. Clone & Install
+## Quick start
 
 ```bash
 cd server
 npm install
-```
-
-### 2. Configure
-
-```bash
-cp server/.env.example server/.env
-# Edit server/.env — add your Stripe keys
-```
-
-### 3. Run
-
-```bash
-cd server
+cp .env.example .env
+npm test
 npm start
-# Server running at http://localhost:3000
 ```
 
-Then open `http://localhost:3000` in your browser.
+Open `http://localhost:3000`.
 
-## File Structure
+## Reward modes
 
+```env
+REWARDS_MODE=off
 ```
-index.html               ← Main landing / lobby page
+
+- `off`: no reward sessions
+- `review`: verified sessions and claims, no payout dispatch
+- `live`: manual approval plus a signed, idempotent payout webhook
+
+Do not enable `review` or `live` until all required secrets, durable storage, identity integration, compliance profiles, and an explicit jurisdiction allowlist are configured. `live` additionally requires an HTTPS payout webhook.
+
+## Server API highlights
+
+### Practice multiplayer and AI battles
+
+- `POST /api/rooms`
+- `POST /api/battles`
+- `PATCH /api/battles/:id/finish`
+
+These endpoints return `rewardEligible: false`. Browser-reported battle results are display-only.
+
+### Server-verified rewards
+
+- `GET /api/rewards/status`
+- `POST /api/rewards/sessions`
+- `POST /api/rewards/sessions/:id/answers`
+- `POST /api/rewards/sessions/:id/finish`
+- `GET /api/rewards/claims`
+- `PUT /api/rewards/admin/users/:userId/compliance`
+- `GET /api/rewards/admin/claims`
+- `POST /api/rewards/admin/claims/:id/approve`
+- `POST /api/rewards/admin/claims/:id/reject`
+
+Reward player endpoints require a short-lived server-signed identity token. Admin endpoints require `REWARDS_ADMIN_TOKEN`.
+
+## Stripe setup
+
+1. Configure `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
+2. Register `https://your-domain/api/stripe-webhook` for `payment_intent.succeeded`.
+3. The server selects the package price; it does not trust a browser-submitted USD amount.
+4. Purchased GGX is labeled utility credit and is not reward eligibility, a cash balance, or a prize claim.
+
+## File structure
+
+```text
+index.html
+pay.html
 games/
-  arena.html             ← Chess + Checkers + Reversi (AI battle config included)
-  tictactoe.html         ← 10×10 Tic-Tac-Toe, 5-in-a-row
-  snake.html             ← Classic Snake
-  math-raindrops.html    ← Math Raindrops brain training
-  battleship.html        ← Battleship vs AI
-ai-arena.html            ← Bring-your-own-model AI battle arena
-pay.html                 ← GGX token purchase (Stripe)
+fieldkit/
 server/
-  server.js              ← Node.js + Express + WebSocket backend
+  server.js
+  reward-engine.js
   package.json
-  .env.example           ← Copy to .env and fill in keys
+  .env.example
+  docs/REWARDS.md
+  test/reward-engine.test.js
 ```
 
-## AI Arena — Bring Your Own Model
-
-The AI Arena (`/ai-arena.html`) lets you:
-
-1. Configure **two AI models** with your own API keys (any OpenAI-compatible endpoint)
-2. Select a game: Chess, Checkers, Reversi, or 10×10 Tic-Tac-Toe
-3. Set move delay, max moves, temperature, and system prompts
-4. Watch the battle live with a move log and response-time stats
-5. Allow spectators to **bet GGX tokens** on the outcome
-
-Supported model providers:
-- OpenAI (GPT-4o, GPT-4o-mini, GPT-3.5-turbo, etc.)
-- Anthropic (Claude via OpenAI-compatible proxy)
-- Google (Gemini via Vertex AI proxy)
-- Ollama (local models at `http://localhost:11434/v1`)
-- Any OpenAI-compatible endpoint
-
-## Stripe Setup
-
-1. Create a [Stripe account](https://stripe.com)
-2. Get your API keys from the Stripe Dashboard
-3. Add them to `server/.env`:
-   ```
-   STRIPE_SECRET_KEY=sk_live_...
-   STRIPE_PUBLISHABLE_KEY=pk_live_...
-   STRIPE_WEBHOOK_SECRET=whsec_...
-   ```
-4. Add the webhook endpoint in Stripe Dashboard → Webhooks:
-   - URL: `https://yourdomain.com/api/stripe-webhook`
-   - Events: `payment_intent.succeeded`
-
-## Deployment (VPS)
+## Validation
 
 ```bash
-# Install Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Install PM2 for process management
-npm install -g pm2
-
-# Start server
-cd /path/to/gogames.xyz/server
-npm install
-cp .env.example .env  # fill in your keys
-pm2 start server.js --name gogames
-
-# Set up Nginx reverse proxy (example)
-# proxy_pass http://localhost:3000;
+cd server
+npm run check
 ```
 
-## Games Credits
+The reward tests cover signed identity, compliance rejection, server-owned scoring, answer-rate integrity, idempotent claim creation, refusal to accept browser scores, and idempotent payout dispatch.
 
-Games ported from [FieldKit](https://github.com/george-shepov/FieldKit) — a collection of offline-safe progressive web apps.
+## Deployment notes
+
+- Store `REWARDS_DATA_FILE` outside the public repository tree, such as `/var/lib/gogames/rewards.json`.
+- Keep reward, identity, admin, payout, and Stripe secrets server-side.
+- The server blocks `/server` and dotfiles from static delivery.
+- Replace the JSON reward store with a transactional database before material volume or reward value.
+- Complete legal, security, fraud, tax, and payout-provider review before allowlisting a jurisdiction.
+
+## Games credits
+
+Games are also ported from [FieldKit](https://github.com/george-shepov/FieldKit), an offline-first collection of tools and games.
 
 ## License
 
