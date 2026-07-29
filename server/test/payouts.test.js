@@ -107,6 +107,15 @@ test('an expired check blocks dispatch even after approval', () => {
   assert.equal(payout.state, 'blocked');
 });
 
+test('a rejected payout cannot be moved back to blocked by a dispatch attempt', () => {
+  const store = makeStore();
+  const { payout } = makePayout(store);
+  passAutomatedChecks(store, payout.id);
+  store.reject(payout.id, 'reviewer@example.com', 'Fraud risk');
+  assert.throws(() => store.beginDispatch(payout.id), /must be approved/);
+  assert.equal(payout.state, 'rejected');
+});
+
 test('idempotency prevents duplicate payouts', () => {
   const store = makeStore();
   const first = makePayout(store);
