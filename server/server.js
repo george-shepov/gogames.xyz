@@ -4,12 +4,14 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const path = require('path');
-const { WebSocketServer } = require('ws');
+const crypto = require('crypto');
+const { WebSocketServer, WebSocket } = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
+const { createRewardRouter } = require('./reward-engine');
 
 const app = express();
 const server = http.createServer(app);
@@ -17,10 +19,22 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 const PORT = process.env.PORT || 3000;
 const STATIC_DIR = path.join(__dirname, '..');
+const GGX_PACKAGES = new Map([
+  [100, 500],
+  [500, 2000],
+  [2000, 6000],
+  [5000, 12000],
+]);
 
-// ────────────────────────────────────────────────────────────
-// MIDDLEWARE
-// ────────────────────────────────────────────────────────────
+/** @type {Map<string, object>} */
+const rooms = new Map();
+/** @type {Map<string, object>} */
+const users = new Map();
+/** @type {Map<string, object>} */
+const battles = new Map();
+/** @type {Map<string, object>} */
+const bets = new Map();
+const processedStripeEvents = new Set();
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -34,489 +48,400 @@ app.use(helmet({
     },
   },
 }));
-// CORS: use explicit allowlist. In production set ALLOWED_ORIGIN env var to your domain.
-// In development, defaults to localhost origins only (never a wildcard '*').
+
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGIN
-  ? process.env.ALLOWED_ORIGIN.split(',').map(o => o.trim())
+  ? process.env.ALLOWED_ORIGIN.split(',').map(origin => origin.trim())
   : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (same-origin, curl, server-to-server)
-    if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origin ${origin} not allowed`));
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS: origin ${origin} not allowed`));
   },
-  methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.use(express.json());
 
-// Rate limiting
 const apiLimiter = rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false });
 const payLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false });
 const staticLimiter = rateLimit({ windowMs: 60_000, max: 300, standardHeaders: true, legacyHeaders: false });
+
+// Stripe must receive the untouched request bytes. Register this route before express.json().
+app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) return res.status(503).json({ error: 'stripe_webhook_not_configured' });
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], webhookSecret);
+  } catch {
+    return res.status(400).type('text/plain').send('Webhook signature verification failed');
+  }
+
+  if (processedStripeEvents.has(event.id)) return res.sendStatus(200);
+  processedStripeEvents.add(event.id);
+
+  if (event.type === 'payment_intent.succeeded') {
+    const intent = event.data.object;
+    const ggx = Number.parseInt(intent.metadata.ggx, 10);
+    const email = String(intent.metadata.email || '').trim().toLowerCase();
+    const expectedAmount = GGX_PACKAGES.get(ggx);
+
+    if (email && expectedAmount && intent.amount_received >= expectedAmount && intent.currency === 'usd') {
+      let user = [...users.values()].find(candidate => candidate.email === email);
+      if (!user) {
+        user = { id: uuidv4(), email, ggxBalance: 0, balanceType: 'utility', createdAt: Date.now() };
+        users.set(user.id, user);
+      }
+      user.ggxBalance += ggx;
+      console.log(`[GGX] Credited ${ggx} utility GGX to ${email} (balance: ${user.ggxBalance})`);
+    } else {
+      console.warn('[Stripe] Payment metadata did not match the server package catalog', event.id);
+    }
+  }
+
+  return res.sendStatus(200);
+});
+
+app.use(express.json({ limit: '64kb' }));
 app.use('/api', apiLimiter);
 app.use('/api/create-payment-intent', payLimiter);
 
-// Serve static files from repo root
-app.use(express.static(STATIC_DIR));
+const { router: rewardRouter, engine: rewardEngine } = createRewardRouter({ express, env: process.env });
+app.use('/api/rewards', rewardRouter);
 
-// ────────────────────────────────────────────────────────────
-// IN-MEMORY STORES (replace with DB for production)
-// ────────────────────────────────────────────────────────────
+function send(ws, payload) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+}
 
-/** @type {Map<string, Room>} */
-const rooms = new Map();
+function broadcastToRoom(roomId, payload) {
+  const room = rooms.get(roomId);
+  if (!room) return;
+  [room.hostWs, room.guestWs].forEach(socket => send(socket, payload));
+}
 
-/** @type {Map<string, UserAccount>} */
-const users = new Map();
+function sanitizeBattle(battle) {
+  return {
+    id: battle.id,
+    game: battle.game,
+    modelAName: battle.modelAName,
+    modelBName: battle.modelBName,
+    status: battle.status,
+    moveCount: battle.moveCount,
+    winner: battle.winner,
+    spectatorCount: battle.spectators.length,
+    bettingOpen: false,
+    rewardEligible: false,
+    verificationStatus: battle.verificationStatus,
+    poolA: battle.poolA,
+    poolB: battle.poolB,
+    poolDraw: battle.poolDraw,
+  };
+}
 
-/** @type {Map<string, Battle>} */
-const battles = new Map();
+function refundPendingBets(battleId) {
+  for (const bet of bets.values()) {
+    if (bet.battleId !== battleId || bet.status !== 'pending') continue;
+    const user = users.get(bet.userId);
+    if (user) user.ggxBalance += bet.amount;
+    bet.status = 'refunded';
+  }
+}
 
-/** @type {Map<string, Bet>} */
-const bets = new Map();
-
-/**
- * @typedef {Object} Room
- * @property {string} id
- * @property {string} game - 'chess'|'checkers'|'reversi'|'tictactoe'
- * @property {'waiting'|'playing'|'finished'} status
- * @property {string|null} hostId
- * @property {string|null} guestId
- * @property {WebSocket|null} hostWs
- * @property {WebSocket|null} guestWs
- * @property {number} createdAt
- * @property {number|null} wager - GGX wager amount (null = no wager)
- */
-
-/**
- * @typedef {Object} Battle
- * @property {string} id
- * @property {string} game
- * @property {string} modelAName
- * @property {string} modelBName
- * @property {'live'|'finished'|'cancelled'} status
- * @property {number} moveCount
- * @property {string|null} winner - 'a'|'b'|'draw'|null
- * @property {WebSocket[]} spectators
- * @property {number} createdAt
- * @property {boolean} bettingOpen
- * @property {number} poolA
- * @property {number} poolB
- * @property {number} poolDraw
- */
-
-/**
- * @typedef {Object} Bet
- * @property {string} id
- * @property {string} battleId
- * @property {string} userId
- * @property {'a'|'b'|'draw'} choice
- * @property {number} amount
- * @property {'pending'|'won'|'lost'|'refunded'} status
- */
-
-/**
- * @typedef {Object} UserAccount
- * @property {string} id
- * @property {string} email
- * @property {number} ggxBalance
- * @property {number} createdAt
- */
-
-// ────────────────────────────────────────────────────────────
-// WEBSOCKET — MULTIPLAYER ROOMS
-// ────────────────────────────────────────────────────────────
-
-wss.on('connection', (ws) => {
+wss.on('connection', ws => {
   ws.id = uuidv4();
   ws.roomId = null;
   ws.battleId = null;
 
-  ws.on('message', (raw) => {
-    let msg;
-    try { msg = JSON.parse(raw); } catch { return; }
-    switch (msg.type) {
-      case 'join':       handleJoin(ws, msg); break;
-      case 'move':       handleMove(ws, msg); break;
-      case 'spectate':   handleSpectate(ws, msg); break;
-      case 'battle_move':handleBattleMove(ws, msg); break;
-      case 'chat':       handleChat(ws, msg); break;
-      default: break;
+  ws.on('message', raw => {
+    let message;
+    try { message = JSON.parse(raw); } catch { return; }
+
+    if (message.type === 'join') {
+      const roomId = String(message.room || '').toUpperCase();
+      const role = message.role;
+      if (!roomId || !['host', 'guest'].includes(role)) return;
+
+      let room = rooms.get(roomId);
+      if (!room) {
+        room = {
+          id: roomId,
+          game: message.game || 'chess',
+          status: 'waiting',
+          hostId: null,
+          guestId: null,
+          hostWs: null,
+          guestWs: null,
+          createdAt: Date.now(),
+          wager: null,
+        };
+        rooms.set(roomId, room);
+      }
+
+      ws.roomId = roomId;
+      if (role === 'host' && !room.hostId) {
+        room.hostId = ws.id;
+        room.hostWs = ws;
+        send(ws, { type: 'joined', role: 'host', room: roomId, game: room.game, rewardEligible: false });
+      } else if (role === 'guest' && !room.guestId && room.hostId) {
+        room.guestId = ws.id;
+        room.guestWs = ws;
+        room.status = 'playing';
+        send(ws, { type: 'joined', role: 'guest', room: roomId, game: room.game, rewardEligible: false });
+        send(room.hostWs, { type: 'opponent_joined', room: roomId });
+        broadcastToRoom(roomId, { type: 'game_start', room: roomId, game: room.game, rewardEligible: false });
+      } else {
+        send(ws, { type: 'error', message: 'Room full or invalid join' });
+      }
+      return;
+    }
+
+    if (message.type === 'move') {
+      const room = ws.roomId ? rooms.get(ws.roomId) : null;
+      if (!room || room.status !== 'playing') return;
+      const isHost = ws.id === room.hostId;
+      send(isHost ? room.guestWs : room.hostWs, {
+        type: 'move',
+        move: message.move,
+        from: isHost ? 'host' : 'guest',
+      });
+      return;
+    }
+
+    if (message.type === 'spectate') {
+      const battle = battles.get(message.battleId);
+      if (!battle) return send(ws, { type: 'error', message: 'Battle not found' });
+      ws.battleId = battle.id;
+      battle.spectators.push(ws);
+      send(ws, { type: 'spectating', battleId: battle.id, battle: sanitizeBattle(battle) });
+      return;
+    }
+
+    if (message.type === 'battle_move') {
+      const battle = ws.battleId ? battles.get(ws.battleId) : null;
+      if (!battle || battle.status !== 'live') return;
+      battle.moveCount += 1;
+      battle.spectators.forEach(spectator => {
+        if (spectator !== ws) send(spectator, { type: 'battle_move', move: message.move, moveCount: battle.moveCount });
+      });
+      return;
+    }
+
+    if (message.type === 'chat') {
+      const room = ws.roomId ? rooms.get(ws.roomId) : null;
+      if (!room) return;
+      broadcastToRoom(room.id, { type: 'chat', text: String(message.text || '').slice(0, 200), from: ws.id });
     }
   });
 
   ws.on('close', () => {
-    cleanupConnection(ws);
+    if (ws.roomId) {
+      const room = rooms.get(ws.roomId);
+      if (room) {
+        const isHost = ws.id === room.hostId;
+        send(isHost ? room.guestWs : room.hostWs, { type: 'opponent_left' });
+        room.status = 'finished';
+      }
+    }
+    if (ws.battleId) {
+      const battle = battles.get(ws.battleId);
+      if (battle) battle.spectators = battle.spectators.filter(spectator => spectator !== ws);
+    }
   });
 
-  ws.on('error', (err) => {
-    console.error('[WS] error on', ws.id, err.message);
-  });
+  ws.on('error', error => console.error('[WS]', ws.id, error.message));
 });
 
-function send(ws, obj) {
-  if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
-}
-
-function handleJoin(ws, msg) {
-  const { room: roomId, role, game } = msg;
-  if (!roomId || !role) return;
-
-  let room = rooms.get(roomId);
-  if (!room) {
-    // Create new room
-    room = {
-      id: roomId,
-      game: game || 'chess',
-      status: 'waiting',
-      hostId: null,
-      guestId: null,
-      hostWs: null,
-      guestWs: null,
-      createdAt: Date.now(),
-      wager: null,
-    };
-    rooms.set(roomId, room);
-  }
-
-  ws.roomId = roomId;
-
-  if (role === 'host' && !room.hostId) {
-    room.hostId = ws.id;
-    room.hostWs = ws;
-    send(ws, { type: 'joined', role: 'host', room: roomId, game: room.game });
-  } else if (role === 'guest' && !room.guestId && room.hostId) {
-    room.guestId = ws.id;
-    room.guestWs = ws;
-    room.status = 'playing';
-    send(ws, { type: 'joined', role: 'guest', room: roomId, game: room.game });
-    send(room.hostWs, { type: 'opponent_joined', room: roomId });
-    broadcastToRoom(roomId, { type: 'game_start', room: roomId, game: room.game });
-  } else {
-    send(ws, { type: 'error', message: 'Room full or invalid join' });
-  }
-}
-
-function handleMove(ws, msg) {
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room || room.status !== 'playing') return;
-  // Relay move to opponent
-  const isHost = ws.id === room.hostId;
-  const opponent = isHost ? room.guestWs : room.hostWs;
-  if (opponent) {
-    send(opponent, { type: 'move', move: msg.move, from: isHost ? 'host' : 'guest' });
-  }
-}
-
-function handleSpectate(ws, msg) {
-  const { battleId } = msg;
-  if (!battleId) return;
-  const battle = battles.get(battleId);
-  if (!battle) { send(ws, { type: 'error', message: 'Battle not found' }); return; }
-  ws.battleId = battleId;
-  battle.spectators.push(ws);
-  send(ws, { type: 'spectating', battleId, battle: sanitizeBattle(battle) });
-}
-
-function handleBattleMove(ws, msg) {
-  const battle = ws.battleId ? battles.get(ws.battleId) : null;
-  if (!battle) return;
-  battle.moveCount = (battle.moveCount || 0) + 1;
-  // Broadcast to all spectators
-  battle.spectators.forEach(sw => {
-    if (sw !== ws) send(sw, { type: 'battle_move', move: msg.move, moveCount: battle.moveCount });
-  });
-}
-
-function handleChat(ws, msg) {
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-  broadcastToRoom(ws.roomId, { type: 'chat', text: (msg.text || '').slice(0, 200), from: ws.id });
-}
-
-function broadcastToRoom(roomId, obj) {
-  const room = rooms.get(roomId);
-  if (!room) return;
-  [room.hostWs, room.guestWs].forEach(ws => { if (ws) send(ws, obj); });
-}
-
-function cleanupConnection(ws) {
-  if (ws.roomId) {
-    const room = rooms.get(ws.roomId);
-    if (room) {
-      const isHost = ws.id === room.hostId;
-      const opponent = isHost ? room.guestWs : room.hostWs;
-      if (opponent) send(opponent, { type: 'opponent_left' });
-      room.status = 'finished';
-    }
-  }
-  if (ws.battleId) {
-    const battle = battles.get(ws.battleId);
-    if (battle) {
-      battle.spectators = battle.spectators.filter(s => s !== ws);
-    }
-  }
-}
-
-function sanitizeBattle(b) {
-  return { id: b.id, game: b.game, modelAName: b.modelAName, modelBName: b.modelBName,
-           status: b.status, moveCount: b.moveCount, winner: b.winner,
-           spectatorCount: b.spectators.length, bettingOpen: b.bettingOpen,
-           poolA: b.poolA, poolB: b.poolB, poolDraw: b.poolDraw };
-}
-
-// ────────────────────────────────────────────────────────────
-// REST API — ROOMS
-// ────────────────────────────────────────────────────────────
-
 app.post('/api/rooms', (req, res) => {
-  const { game, wager } = req.body;
-  const id = Math.random().toString(36).slice(2, 8).toUpperCase();
-  const room = { id, game: game || 'chess', status: 'waiting', hostId: null, guestId: null,
-                 hostWs: null, guestWs: null, createdAt: Date.now(), wager: wager || null };
+  const id = crypto.randomBytes(4).toString('hex').slice(0, 6).toUpperCase();
+  const room = {
+    id,
+    game: req.body.game || 'chess',
+    status: 'waiting',
+    hostId: null,
+    guestId: null,
+    hostWs: null,
+    guestWs: null,
+    createdAt: Date.now(),
+    wager: null,
+  };
   rooms.set(id, room);
-  res.json({ roomId: id, url: `/games/arena.html?room=${id}` });
+  res.json({
+    roomId: id,
+    url: `/games/arena.html?room=${id}`,
+    rewardEligible: false,
+    notice: 'Browser-hosted rooms are practice play and cannot trigger a payout.',
+  });
 });
 
 app.get('/api/rooms/:id', (req, res) => {
   const room = rooms.get(req.params.id.toUpperCase());
   if (!room) return res.status(404).json({ error: 'Room not found' });
-  res.json({ id: room.id, game: room.game, status: room.status,
-             players: (room.hostId ? 1 : 0) + (room.guestId ? 1 : 0) });
+  return res.json({
+    id: room.id,
+    game: room.game,
+    status: room.status,
+    players: Number(Boolean(room.hostId)) + Number(Boolean(room.guestId)),
+    rewardEligible: false,
+  });
 });
 
-// ────────────────────────────────────────────────────────────
-// REST API — BATTLES (AI vs AI)
-// ────────────────────────────────────────────────────────────
-
 app.post('/api/battles', (req, res) => {
-  const { game, modelAName, modelBName, bettingOpen } = req.body;
+  const { game, modelAName, modelBName } = req.body;
   if (!game || !modelAName || !modelBName) {
     return res.status(400).json({ error: 'game, modelAName, modelBName required' });
   }
-  const id = uuidv4();
-  const battle = { id, game, modelAName, modelBName, status: 'live',
-                   moveCount: 0, winner: null, spectators: [],
-                   createdAt: Date.now(), bettingOpen: !!bettingOpen,
-                   poolA: 0, poolB: 0, poolDraw: 0 };
-  battles.set(id, battle);
-  res.json(sanitizeBattle(battle));
+  const battle = {
+    id: uuidv4(),
+    game,
+    modelAName: String(modelAName).slice(0, 100),
+    modelBName: String(modelBName).slice(0, 100),
+    status: 'live',
+    moveCount: 0,
+    winner: null,
+    spectators: [],
+    createdAt: Date.now(),
+    bettingOpen: false,
+    rewardEligible: false,
+    verificationStatus: 'browser-hosted-practice',
+    poolA: 0,
+    poolB: 0,
+    poolDraw: 0,
+  };
+  battles.set(battle.id, battle);
+  return res.status(201).json({
+    ...sanitizeBattle(battle),
+    notice: 'This browser-hosted battle is not eligible for betting or rewards.',
+  });
 });
 
-app.get('/api/battles', (req, res) => {
-  const live = [...battles.values()]
-    .filter(b => b.status === 'live')
-    .map(sanitizeBattle);
-  res.json(live);
+app.get('/api/battles', (_req, res) => {
+  res.json([...battles.values()].filter(battle => battle.status === 'live').map(sanitizeBattle));
 });
 
 app.get('/api/battles/:id', (req, res) => {
   const battle = battles.get(req.params.id);
   if (!battle) return res.status(404).json({ error: 'Battle not found' });
-  res.json(sanitizeBattle(battle));
+  return res.json(sanitizeBattle(battle));
 });
 
 app.patch('/api/battles/:id/finish', (req, res) => {
   const battle = battles.get(req.params.id);
   if (!battle) return res.status(404).json({ error: 'Battle not found' });
-  const { winner } = req.body; // 'a' | 'b' | 'draw'
+  const winner = req.body.winner;
+  if (![null, 'a', 'b', 'draw'].includes(winner ?? null)) {
+    return res.status(400).json({ error: 'winner must be "a", "b", "draw", or null' });
+  }
+
+  // This result is display-only. A browser report never settles a wager or reward.
   battle.status = 'finished';
-  battle.winner = winner || null;
-  // Resolve bets
-  resolveBets(req.params.id, winner);
-  // Notify spectators
-  battle.spectators.forEach(ws => send(ws, { type: 'battle_over', battleId: battle.id, winner }));
-  res.json(sanitizeBattle(battle));
+  battle.winner = winner ?? null;
+  battle.bettingOpen = false;
+  refundPendingBets(battle.id);
+  battle.spectators.forEach(socket => send(socket, {
+    type: 'battle_over',
+    battleId: battle.id,
+    winner: battle.winner,
+    settlement: 'none-browser-result-unverified',
+  }));
+  return res.json({
+    ...sanitizeBattle(battle),
+    settlement: 'none-browser-result-unverified',
+  });
 });
 
-// ────────────────────────────────────────────────────────────
-// REST API — BETTING
-// ────────────────────────────────────────────────────────────
-
-app.post('/api/bets', (req, res) => {
-  const { battleId, userId, choice, amount } = req.body;
-  if (!battleId || !userId || !choice || !amount) {
-    return res.status(400).json({ error: 'battleId, userId, choice, amount required' });
-  }
-  if (!['a','b','draw'].includes(choice)) {
-    return res.status(400).json({ error: 'choice must be "a", "b", or "draw"' });
-  }
-  const battle = battles.get(battleId);
-  if (!battle || !battle.bettingOpen) {
-    return res.status(400).json({ error: 'Battle not found or betting closed' });
-  }
-  const user = users.get(userId);
-  if (!user || user.ggxBalance < amount) {
-    return res.status(400).json({ error: 'Insufficient GGX balance' });
-  }
-  // Deduct balance
-  user.ggxBalance -= amount;
-  // Add to pool
-  if (choice === 'a') battle.poolA += amount;
-  else if (choice === 'b') battle.poolB += amount;
-  else battle.poolDraw += amount;
-  // Record bet
-  const bet = { id: uuidv4(), battleId, userId, choice, amount, status: 'pending' };
-  bets.set(bet.id, bet);
-  res.json({ betId: bet.id, balance: user.ggxBalance });
+app.post('/api/bets', (_req, res) => {
+  return res.status(409).json({
+    error: 'unverified_wagering_disabled',
+    message: 'Browser-hosted game results are not safe for real-value settlement. Use a server-verified reward program instead.',
+  });
 });
 
 app.get('/api/bets/:userId', (req, res) => {
-  const userBets = [...bets.values()].filter(b => b.userId === req.params.userId);
+  const userBets = [...bets.values()].filter(bet => bet.userId === req.params.userId);
   res.json(userBets);
 });
 
-function resolveBets(battleId, winner) {
-  const battleBets = [...bets.values()].filter(b => b.battleId === battleId && b.status === 'pending');
-  const battle = battles.get(battleId);
-  if (!battle) return;
-  const totalPool = battle.poolA + battle.poolB + battle.poolDraw;
-  const winnerPool = winner === 'a' ? battle.poolA : winner === 'b' ? battle.poolB : battle.poolDraw;
-  battleBets.forEach(bet => {
-    const user = users.get(bet.userId);
-    if (!user) return;
-    if (winner === null) {
-      // Refund
-      bet.status = 'refunded';
-      user.ggxBalance += bet.amount;
-    } else if (bet.choice === winner) {
-      // Win: proportional share of total pool minus 5% platform fee
-      bet.status = 'won';
-      const share = winnerPool > 0 ? (bet.amount / winnerPool) : 1;
-      const winnings = Math.floor((totalPool * 0.95) * share);
-      user.ggxBalance += winnings;
-    } else {
-      bet.status = 'lost';
-    }
-  });
-}
-
-// ────────────────────────────────────────────────────────────
-// REST API — USERS & GGX
-// ────────────────────────────────────────────────────────────
-
 app.post('/api/users', (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'email required' });
-  // Check if exists
-  const existing = [...users.values()].find(u => u.email === email);
-  if (existing) return res.json({ userId: existing.id, balance: existing.ggxBalance });
-  const user = { id: uuidv4(), email, ggxBalance: 100, createdAt: Date.now() };
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) return res.status(400).json({ error: 'valid email required' });
+  const existing = [...users.values()].find(user => user.email === email);
+  if (existing) {
+    return res.json({ userId: existing.id, balance: existing.ggxBalance, balanceType: existing.balanceType });
+  }
+  const user = { id: uuidv4(), email, ggxBalance: 100, balanceType: 'practice', createdAt: Date.now() };
   users.set(user.id, user);
-  res.status(201).json({ userId: user.id, balance: user.ggxBalance });
+  return res.status(201).json({ userId: user.id, balance: user.ggxBalance, balanceType: user.balanceType });
 });
 
 app.get('/api/users/:id/balance', (req, res) => {
   const user = users.get(req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ userId: user.id, balance: user.ggxBalance });
+  return res.json({ userId: user.id, balance: user.ggxBalance, balanceType: user.balanceType });
 });
 
-// ────────────────────────────────────────────────────────────
-// REST API — STRIPE PAYMENTS
-// ────────────────────────────────────────────────────────────
-
 app.post('/api/create-payment-intent', async (req, res) => {
-  const { ggx, usd, email } = req.body;
-  if (!ggx || !usd || !email) {
-    return res.status(400).json({ error: 'ggx, usd, email required' });
+  const ggx = Number.parseInt(req.body.ggx, 10);
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const amount = GGX_PACKAGES.get(ggx);
+  if (!amount || !email || !email.includes('@')) {
+    return res.status(400).json({ error: 'Choose a valid GGX package and provide a valid email' });
   }
   if (!process.env.STRIPE_SECRET_KEY) {
     return res.status(503).json({ error: 'Stripe not configured. Set STRIPE_SECRET_KEY in .env' });
   }
+
   try {
-    const amount = Math.round(usd * 100); // cents
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: 'usd',
-      metadata: { ggx: String(ggx), email },
+      metadata: { ggx: String(ggx), email, balanceType: 'utility' },
       receipt_email: email,
-      description: `GoGames.XYZ — ${ggx} GGX tokens`,
+      description: `GoGames.XYZ — ${ggx} non-withdrawable utility GGX`,
+      automatic_payment_methods: { enabled: true },
     });
-    res.json({ clientSecret: paymentIntent.client_secret });
-  } catch (err) {
-    console.error('[Stripe]', err.message);
-    res.status(500).json({ error: err.message });
+    return res.json({ clientSecret: paymentIntent.client_secret, ggx, amount });
+  } catch (error) {
+    console.error('[Stripe]', error.message);
+    return res.status(500).json({ error: 'Unable to create payment intent' });
   }
 });
-
-// Stripe webhook — fulfill GGX after successful payment
-app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!webhookSecret) return res.sendStatus(200); // skip in dev
-
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-  } catch (err) {
-    // Return plain text; do NOT reflect err.message into HTML to avoid XSS
-    return res.status(400).type('text/plain').send('Webhook signature verification failed');
-  }
-
-  if (event.type === 'payment_intent.succeeded') {
-    const intent = event.data.object;
-    const ggx = parseInt(intent.metadata.ggx, 10);
-    const email = intent.metadata.email;
-    if (email && ggx > 0) {
-      let user = [...users.values()].find(u => u.email === email);
-      if (!user) {
-        user = { id: uuidv4(), email, ggxBalance: 0, createdAt: Date.now() };
-        users.set(user.id, user);
-      }
-      user.ggxBalance += ggx;
-      console.log(`[GGX] Credited ${ggx} GGX to ${email} (balance: ${user.ggxBalance})`);
-    }
-  }
-
-  res.sendStatus(200);
-});
-
-// ────────────────────────────────────────────────────────────
-// LEADERBOARD
-// ────────────────────────────────────────────────────────────
 
 app.get('/api/leaderboard', (req, res) => {
   const game = req.query.game || 'all';
-  // In production: query a real DB. For now return static data.
-  const data = [
-    { model: 'GPT-4o',              wins: 47, losses: 12, draws: 5  },
-    { model: 'Claude-3.5-Sonnet',   wins: 43, losses: 15, draws: 8  },
-    { model: 'Gemini-1.5-Pro',      wins: 38, losses: 20, draws: 7  },
-    { model: 'GPT-4o-mini',         wins: 31, losses: 28, draws: 6  },
-    { model: 'Llama-3.1-70B',       wins: 29, losses: 32, draws: 4  },
-    { model: 'Mistral-7B',          wins: 18, losses: 44, draws: 3  },
-    { model: 'GPT-3.5-Turbo',       wins: 15, losses: 50, draws: 7  },
+  const rankings = [
+    { model: 'GPT-4o', wins: 47, losses: 12, draws: 5 },
+    { model: 'Claude-3.5-Sonnet', wins: 43, losses: 15, draws: 8 },
+    { model: 'Gemini-1.5-Pro', wins: 38, losses: 20, draws: 7 },
+    { model: 'GPT-4o-mini', wins: 31, losses: 28, draws: 6 },
+    { model: 'Llama-3.1-70B', wins: 29, losses: 32, draws: 4 },
+    { model: 'Mistral-7B', wins: 18, losses: 44, draws: 3 },
+    { model: 'GPT-3.5-Turbo', wins: 15, losses: 50, draws: 7 },
   ];
-  res.json({ game, rankings: data });
+  res.json({ game, rankings, rewardEligible: false });
 });
 
-// ────────────────────────────────────────────────────────────
-// SPA FALLBACK — serve index.html for unknown routes
-// Rate-limited to prevent file system abuse
+// Never expose backend source, persisted reward state, or deployment files.
+app.use('/server', (_req, res) => res.sendStatus(404));
+app.use('/.git', (_req, res) => res.sendStatus(404));
+app.use(express.static(STATIC_DIR, { dotfiles: 'deny' }));
+app.get('*', staticLimiter, (_req, res) => res.sendFile(path.join(STATIC_DIR, 'index.html')));
 
-app.get('*', staticLimiter, (req, res) => {
-  res.sendFile(path.join(STATIC_DIR, 'index.html'));
+app.use((error, _req, res, _next) => {
+  console.error('[HTTP]', error.message);
+  res.status(500).json({ error: 'internal_server_error' });
 });
-
-// ────────────────────────────────────────────────────────────
-// START
-// ────────────────────────────────────────────────────────────
 
 server.listen(PORT, () => {
+  const rewardStatus = rewardEngine.getStatus();
   console.log(`
-┌─────────────────────────────────────────────┐
-│  GoGames.XYZ Server                         │
-│  http://localhost:${PORT}                       │
-│                                             │
-│  WebSocket:  ws://localhost:${PORT}/ws          │
-│  Static:     ${STATIC_DIR.slice(-30).padEnd(30)} │
-│  Stripe:     ${process.env.STRIPE_SECRET_KEY ? '✅ configured' : '⚠  not configured (set STRIPE_SECRET_KEY)'}  │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  GoGames.XYZ Server                                      │
+│  http://localhost:${String(PORT).padEnd(39)}│
+│  WebSocket: /ws                                          │
+│  Browser wagering: disabled                              │
+│  Rewards: ${`${rewardStatus.mode} (${rewardStatus.configured ? 'configured' : 'not configured'})`.padEnd(45)}│
+│  Stripe: ${`${process.env.STRIPE_SECRET_KEY ? 'configured' : 'not configured'}`.padEnd(46)}│
+└──────────────────────────────────────────────────────────┘
 `);
 });
-
-module.exports = { app, server };
