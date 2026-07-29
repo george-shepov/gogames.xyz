@@ -23,7 +23,15 @@
   }
   function renderBalance(){state.balance=Math.max(0,Math.floor(state.balance));$('#wallet-balance').textContent=`${state.balance} Play GGX`;$('#wallet-balance-large').textContent=state.balance}
   function predictionFor(id){return state.predictions.find(p=>p.battleId===id&&p.status==='pending')}
-  function battleMarkup(battle){const id=String(battle.id||''),a=String(battle.modelAName||'Model A'),b=String(battle.modelBName||'Model B'),pending=predictionFor(id);return `<article class="battle-card" data-battle-id="${id}"><div class="battle-title"><span>${a} ⚔ ${b}</span><span>${String(battle.game||'game')}</span></div><div class="battle-meta">Practice prediction · no cash value${pending?` · ${pending.amount} points on ${pending.choice}`:''}</div><div class="platform-row"><select class="platform-select battle-choice" aria-label="Choose outcome" ${pending?'disabled':''}><option value="a">${a}</option><option value="draw">Draw</option><option value="b">${b}</option></select><button class="gold-btn battle-bet-btn" type="button" ${pending?'disabled':''}>${pending?'Prediction pending':'Make prediction'}</button></div></article>`}
+function battleMarkup(battle){
+    const escapeHTML=value=>String(value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+    const rawId=battle.id??'';
+    const id=escapeHTML(rawId);
+    const a=escapeHTML(battle.modelAName||'Model A');
+    const b=escapeHTML(battle.modelBName||'Model B');
+    const game=escapeHTML(battle.game||'game');
+    const pending=predictionFor(String(rawId));
+    return `<article class="battle-card" data-battle-id="${id}"><div class="battle-title"><span>${a} ⚔ ${b}</span><span>${game}</span></div><div class="battle-meta">Practice prediction · no cash value${pending?` · ${pending.amount} points on ${escapeHTML(pending.choice)}`:''}</div><div class="platform-row"><select class="platform-select battle-choice" aria-label="Choose outcome" ${pending?'disabled':''}><option value="a">${a}</option><option value="draw">Draw</option><option value="b">${b}</option></select><button class="gold-btn battle-bet-btn" type="button" ${pending?'disabled':''}>${pending?'Prediction pending':'Make prediction'}</button></div></article>`}
   async function settlePredictions(){const pending=state.predictions.filter(p=>p.status==='pending');let settled=0;for(const pick of pending){try{const battle=await api(`/api/battles/${encodeURIComponent(pick.battleId)}`);if(battle.status==='finished'){pick.status=pick.choice===battle.winner?'won':'lost';pick.winner=battle.winner;if(pick.status==='won')state.balance+=pick.amount*2;settled++}}catch(_){}}
     if(settled){save();renderBalance();setStatus(`${settled} prediction(s) settled from arena results.`,'success')}return settled}
   async function loadBattles(){setStatus('Loading live arenas…');await settlePredictions();const battles=await api('/api/battles');state.battles=Array.isArray(battles)?battles.filter(b=>b&&b.status==='live'):[];$('#wallet-battles').innerHTML=state.battles.length?state.battles.map(battleMarkup).join(''):'<p style="color:var(--muted);">No live AI arenas are available right now.</p>';if(!state.battles.length)setStatus('No live arenas currently available.');else setStatus(`${state.battles.length} live arena(s) available.`,'success')}
