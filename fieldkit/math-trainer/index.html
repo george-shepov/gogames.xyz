@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Math Practice Drills</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{ --bg:#f6f7fb; --fg:#111; --muted:#666; --accent:#2a7ade; --card:#fff; --ok:#1a9b52; --bad:#d83b01; }
+  *{box-sizing:border-box}
+  body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--fg); line-height:1.35; display:flex; min-height:100vh; justify-content:center; align-items:flex-start;}
+  .wrap{width:min(1200px,100%); padding:24px}
+  h1{font-size:2.2rem; margin:0 0 8px}
+  .sub{color:var(--muted); margin-bottom:18px}
+  .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+  .col{display:flex; flex-direction:column; gap:10px}
+  .card{ background:var(--card); border-radius:14px; box-shadow:0 6px 18px rgba(20,20,40,.06); padding:18px; margin-bottom:14px; }
+  label{font-size:1.02rem}
+  select,input[type="number"],input[type="text"]{ font-size:1.02rem; padding:8px 10px; border-radius:10px; border:1px solid #ddd; background:#fff }
+  .ops{display:flex; gap:10px; flex-wrap:wrap}
+  .chip{display:flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid #ddd; border-radius:12px; background:#fff}
+  .chip input{transform:scale(1.2)}
+  .btn{ font-size:1.02rem; padding:10px 14px; border-radius:10px; border:none; cursor:pointer; background:var(--accent); color:#fff; font-weight:600; }
+  .btn.secondary{background:#eaeef6; color:#223}
+  .btn.ghost{background:transparent; border:1px solid #ccd3e0; color:#223}
+  .panel{display:none}
+  .grid{display:grid; grid-template-columns:1.1fr .9fr; gap:12px}
+  @media (max-width:1060px){.grid{grid-template-columns:1fr}}
+  .huge{font-size:3.0rem; font-weight:800; letter-spacing:.5px}
+  .problem{font-variant-numeric:tabular-nums; margin:16px 0}
+  .answer{font-size:2rem; width:220px; text-align:center}
+  .meter{height:10px; background:#eef2f9; border-radius:99px; overflow:hidden}
+  .meter > div{height:100%; background:var(--accent); width:0%}
+  .stats{display:flex; gap:18px; flex-wrap:wrap; color:#223}
+  .stats b{font-size:1.15rem}
+  table{width:100%; border-collapse:collapse; font-size:.95rem}
+  th,td{padding:10px 8px; border-bottom:1px solid #eee; text-align:left}
+  th{font-weight:700; color:#222}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  .banner{padding:10px 12px; border-radius:10px; background:#fff3cd; color:#664d03; border:1px solid #ffec99; margin-bottom:12px; display:none}
+  .muted{color:var(--muted)}
+  .pill{padding:4px 8px; border-radius:999px; background:#eef2f9; font-size:.8rem}
+  .caps{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+  .cardlet{border:1px solid #e8ecf5; border-radius:12px; padding:12px; background:#fff}
+  .tiny{font-size:.85rem; color:#556}
+  .nowrap{white-space:nowrap}
+  .wgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+  @media (max-width:900px){.caps,.wgrid{grid-template-columns:repeat(2,1fr)}}
+  .progress{display:flex; gap:10px; align-items:center}
+  .tag{font-size:.85rem; padding:4px 8px; border:1px solid #dbe2f2; border-radius:999px; background:#fff}
+
+/* Suite nav */
+.suite-nav{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:hsl(222,30%,10%);border-bottom:1px solid hsl(222,15%,20%);font-size:12px;font-family:'DM Sans',system-ui,sans-serif}
+.suite-nav a{color:hsl(215,15%,55%);text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .15s}
+.suite-nav a:hover{color:hsl(160,60%,45%)}
+.suite-nav .suite-name{color:hsl(215,10%,40%);font-family:'DM Mono',monospace;font-size:11px}
+
+/* Mobile responsive fixes */
+@media(max-width:480px){
+  table{font-size:12px}
+  th,td{padding:4px 6px!important}
+}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+</style>
+</head>
+<body>
+<nav class="suite-nav">
+  <a href="../index.html">← Back to FieldKit</a>
+  <span class="suite-name">FieldKit</span>
+</nav>
+
+<div class="wrap">
+  <h1>Math Practice Drills</h1>
+  <div class="sub">Minimal UI. Big type. Accurate timing. Persistent SQLite storage.</div>
+
+  <div id="banner" class="banner"></div>
+
+  <!-- SETTINGS -->
+  <div class="card" id="settings">
+    <div class="grid">
+      <div class="col">
+        <h3 style="margin:0">Setup</h3>
+
+        <div class="row">
+          <label>Difficulty</label>
+          <select id="difficulty">
+            <option value="easy">Easy (1—“10)</option>
+            <option value="medium" selected>Medium (1—“50)</option>
+            <option value="hard">Hard (1—“100)</option>
+          </select>
+
+          <label>Mode</label>
+          <select id="mode">
+            <option value="timer" selected>Timed</option>
+            <option value="count">Fixed # Problems</option>
+          </select>
+
+          <span id="timerOpts" class="row">
+            <label>Seconds</label>
+            <select id="time"><option>30</option><option selected>60</option><option>120</option></select>
+          </span>
+          <span id="countOpts" class="row" style="display:none">
+            <label>Problems</label>
+            <select id="count"><option>10</option><option selected>20</option><option>40</option></select>
+          </span>
+        </div>
+
+        <div class="row">
+          <label class="chip"><input type="checkbox" id="adaptive" checked> Adaptive difficulty</label>
+          <label class="chip"><input type="checkbox" id="cleanDiv" checked> Ã· only clean divisions</label>
+          <label class="chip"><input type="checkbox" id="mastery" checked> Mastery path</label>
+        </div>
+
+        <div class="row">
+          <label>Enable Operators</label>
+          <div class="ops">
+            <label class="chip"><input type="checkbox" class="op" value="+" checked> +</label>
+            <label class="chip"><input type="checkbox" class="op" value="-" checked> âˆ’</label>
+            <label class="chip"><input type="checkbox" class="op" value="Ã—" checked> Ã—</label>
+            <label class="chip"><input type="checkbox" class="op" value="Ã·" checked> Ã·</label>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn" id="startBtn">Start (Space)</button>
+          <button class="btn ghost" id="resetDBBtn" title="Clear saved results">Reset DB</button>
+          <button class="btn secondary" id="saveSettingsBtn" title="Persist settings">Save Settings</button>
+        </div>
+        <div class="muted tiny">Keys: Enter=Submit, Space=Start/Next, Esc=Pause.</div>
+      </div>
+
+      <div class="col">
+        <h3 style="margin:0">Per-Operator Caps & Seeds</h3>
+        <div class="tiny">Caps = hard limits. Seeds = starting difficulty (used at run start; adaptive ramps from there).</div>
+        <div class="caps">
+          <div class="cardlet">
+            <div><b>+</b> addends â‰¤ <input id="capPlus" type="number" min="5" max="999" value="100" style="width:90px"></div>
+            <div class="tiny">Seed <input id="seedPlus" type="number" min="5" max="999" value="50" style="width:70px"> | Current: <span id="curPlus">—</span></div>
+          </div>
+          <div class="cardlet">
+            <div><b>âˆ’</b> minuend/subtrahend â‰¤ <input id="capMinus" type="number" min="5" max="999" value="100" style="width:90px"></div>
+            <div class="tiny">Seed <input id="seedMinus" type="number" min="5" max="999" value="50" style="width:70px"> | Current: <span id="curMinus">—</span></div>
+          </div>
+          <div class="cardlet">
+            <div><b>Ã—</b> factors â‰¤ <input id="capTimes" type="number" min="2" max="999" value="12" style="width:90px"></div>
+            <div class="tiny">Seed <input id="seedTimes" type="number" min="2" max="999" value="10" style="width:70px"> | Current: <span id="curTimes">—</span></div>
+          </div>
+          <div class="cardlet">
+            <div class="nowrap"><b>Ã·</b> divisor â‰¤ <input id="capDivDiv" type="number" min="2" max="999" value="12" style="width:90px"></div>
+            <div class="nowrap tiny">quotient â‰¤ <input id="capDivQuo" type="number" min="2" max="999" value="12" style="width:70px"> | Seed d/q <input id="seedDivDiv" type="number" min="2" max="999" value="10" style="width:60px">/<input id="seedDivQuo" type="number" min="2" max="999" value="10" style="width:60px"></div>
+            <div class="tiny">Current: <span id="curDiv">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="col">
+        <h3 style="margin:10px 0 6px">Weighted Operator Selection</h3>
+        <div class="tiny">Weights are normalized automatically. Set any numbers (e.g., 1, 3, 6, 10).</div>
+        <div class="wgrid">
+          <div class="cardlet">+ weight <input id="wPlus" type="number" min="0" value="25" style="width:90px"></div>
+          <div class="cardlet">âˆ’ weight <input id="wMinus" type="number" min="0" value="25" style="width:90px"></div>
+          <div class="cardlet">Ã— weight <input id="wTimes" type="number" min="0" value="25" style="width:90px"></div>
+          <div class="cardlet">Ã· weight <input id="wDiv" type="number" min="0" value="25" style="width:90px"></div>
+        </div>
+        <div class="tiny">Effective mix: <span id="mixPreview">—</span></div>
+      </div>
+
+      <div class="col">
+        <h3 style="margin:10px 0 6px">Mastery Targets (per operator)</h3>
+        <div class="tiny">When —œMastery path— is on, the quiz locks to the current operator until both targets are met.</div>
+        <div class="wgrid">
+          <div class="cardlet"><b>+</b> Accuracy â‰¥ <input id="mAccPlus" type="number" min="50" max="100" value="95" style="width:70px"> % &nbsp; Correct â‰¥ <input id="mCntPlus" type="number" min="5" max="500" value="20" style="width:70px"></div>
+          <div class="cardlet"><b>âˆ’</b> Accuracy â‰¥ <input id="mAccMinus" type="number" min="50" max="100" value="95" style="width:70px"> % &nbsp; Correct â‰¥ <input id="mCntMinus" type="number" min="5" max="500" value="20" style="width:70px"></div>
+          <div class="cardlet"><b>Ã—</b> Accuracy â‰¥ <input id="mAccTimes" type="number" min="50" max="100" value="95" style="width:70px"> % &nbsp; Correct â‰¥ <input id="mCntTimes" type="number" min="5" max="500" value="20" style="width:70px"></div>
+          <div class="cardlet"><b>Ã·</b> Accuracy â‰¥ <input id="mAccDiv" type="number" min="50" max="100" value="95" style="width:70px"> % &nbsp; Correct â‰¥ <input id="mCntDiv" type="number" min="5" max="500" value="20" style="width:70px"></div>
+        </div>
+        <div class="tiny">Mastery order: <input id="masteryOrder" type="text" value="+,-,Ã—,Ã·" style="width:200px"> <span class="muted">(comma-separated ops)</span></div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px">
+      <h3 style="margin:6px 0 8px">Personal Bests</h3>
+      <div id="bests" class="stats">
+        <div><div class="pill">Fastest PPM</div><b id="bestPPM">—</b></div>
+        <div><div class="pill">Best Accuracy</div><b id="bestAcc">—</b></div>
+        <div><div class="pill">Longest Streak</div><b id="bestStreak">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="card panel" id="quizPanel">
+    <div class="row" style="justify-content:space-between; align-items:flex-end">
+      <div class="stats">
+        <div><div class="pill">Time</div><b id="timeLeft">60s</b></div>
+        <div><div class="pill">Score</div><b><span id="score">0</span>/<span id="total">0</span></b></div>
+        <div><div class="pill">Accuracy</div><b id="acc">100%</b></div>
+        <div><div class="pill">PPM</div><b id="ppm">0.0</b></div>
+        <div><div class="pill">Streak</div><b id="streak">0</b></div>
+      </div>
+      <div class="row">
+        <span id="masteryBadge" class="tag" style="display:none"></span>
+        <button class="btn secondary" id="pauseBtn">Pause (Esc)</button>
+        <button class="btn ghost" id="quitBtn">Quit</button>
+      </div>
+    </div>
+
+    <div class="meter" style="margin:14px 0 18px"><div id="meter"></div></div>
+
+    <div class="huge problem" id="problem">—</div>
+    <input id="answer" class="answer" type="number" inputmode="numeric" autocomplete="off" placeholder="Answer" />
+    <div id="feedback" class="muted" style="height:28px; margin-top:8px"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card panel" id="resultsPanel">
+    <h2 style="margin:2px 0 8px">Results</h2>
+    <div class="stats">
+      <div><div class="pill">Correct</div><b id="rCorrect">0</b></div>
+      <div><div class="pill">Total</div><b id="rTotal">0</b></div>
+      <div><div class="pill">Accuracy</div><b id="rAcc">0%</b></div>
+      <div><div class="pill">PPM</div><b id="rPPM">0.0</b></div>
+      <div><div class="pill">Streak Max</div><b id="rStreak">0</b></div>
+      <div><div class="pill">Mode</div><b id="rMode">—</b></div>
+      <div><div class="pill">Difficulty</div><b id="rDiff">—</b></div>
+      <div><div class="pill">Ops</div><b id="rOps">—</b></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="againBtn">Practice Again</button>
+      <button class="btn ghost" id="viewHistoryBtn">View History</button>
+      <button class="btn secondary" id="reviewRunBtn">Review Last Run</button>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="card panel" id="historyPanel">
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <h3 style="margin:0">History (SQLite)</h3>
+      <div class="row">
+        <button class="btn ghost" id="exportCSVBtn">Export CSV</button>
+        <button class="btn secondary" id="closeHistoryBtn">Close</button>
+      </div>
+    </div>
+    <table id="historyTable">
+      <thead>
+        <tr>
+          <th>Date</th><th>Mode</th><th>Secs</th><th>Count</th><th>Diff</th><th>Ops</th>
+          <th>Correct</th><th>Total</th><th>Acc%</th><th>PPM</th><th>Streak</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- REVIEW -->
+  <div class="card panel" id="reviewPanel">
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <h3 style="margin:0">Run Review</h3>
+      <div class="row">
+        <button class="btn ghost" id="exportProblemsBtn">Export Problems CSV</button>
+        <button class="btn secondary" id="closeReviewBtn">Close</button>
+      </div>
+    </div>
+    <div class="tiny muted">Each problem you answered, with timing.</div>
+    <table id="problemsTable">
+      <thead>
+        <tr>
+          <th>#</th><th>When</th><th>Problem</th><th>Your Answer</th><th>Correct?</th><th>Solution</th><th>Elapsed (ms)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- SQL.js (SQLite in WASM). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<script>
+/* -------------------- SQLite bootstrap & persistence -------------------- */
+let SQL, db, sqliteReady=false, memoryFallback={runs:[], problems:[], kv:{}};
+const DB_KEY = 'math_drills_sqlite_v3';
+
+async function initSQLite(){
+  try{
+    SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` });
+    const saved = localStorage.getItem(DB_KEY);
+    db = saved ? new SQL.Database(base64ToUint8(saved)) : new SQL.Database();
+    bootstrapSchema();
+    sqliteReady = true; showBanner('');
+  }catch(e){
+    sqliteReady=false; showBanner('SQLite (sql.js) failed to load. Using temporary in-memory store.');
+  }
+}
+function bootstrapSchema(){
+  db.run(`
+    CREATE TABLE IF NOT EXISTS runs(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts INTEGER, mode TEXT, seconds INTEGER, count_target INTEGER,
+      difficulty TEXT, ops TEXT, correct INTEGER, total INTEGER, accuracy REAL, ppm REAL, streak_max INTEGER
+    );
+    CREATE TABLE IF NOT EXISTS problems(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER, idx INTEGER, ts INTEGER, a INTEGER, b INTEGER, op TEXT,
+      user_answer REAL, solution REAL, correct INTEGER, elapsed_ms INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS runs_ts ON runs(ts);
+    CREATE INDEX IF NOT EXISTS problems_run ON problems(run_id);
+    CREATE TABLE IF NOT EXISTS kv(
+      k TEXT PRIMARY KEY,
+      v TEXT
+    );
+  `);
+}
+function persistDB(){ if(!sqliteReady) return; const data=db.export(); localStorage.setItem(DB_KEY, uint8ToBase64(data)); }
+function kvSet(key, obj){
+  const str = JSON.stringify(obj);
+  if(!sqliteReady){ memoryFallback.kv[key]=str; return; }
+  db.run(`INSERT INTO kv(k,v) VALUES(?,?)
+          ON CONFLICT(k) DO UPDATE SET v=excluded.v;`, [key, str]);
+  persistDB();
+}
+function kvGet(key){
+  if(!sqliteReady){ return memoryFallback.kv[key] ? JSON.parse(memoryFallback.kv[key]) : null; }
+  const r = db.exec(`SELECT v FROM kv WHERE k=?`, [key]);
+  if(!r.length) return null;
+  try{ return JSON.parse(r[0].values[0][0]); }catch{ return null; }
+}
+function insertRunStart(row){
+  if(!sqliteReady){
+    const id = Date.now() + '-' + Math.random().toString(36).slice(2,7);
+    memoryFallback.runs.push({id, ...row}); return id;
+  }
+  const s = db.prepare(`INSERT INTO runs (ts,mode,seconds,count_target,difficulty,ops,correct,total,accuracy,ppm,streak_max)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
+  s.run([row.ts,row.mode,row.seconds,row.count_target,row.difficulty,row.ops,0,0,0,0,0]); s.free();
+  const id = db.exec('SELECT last_insert_rowid() AS id')[0].values[0][0];
+  persistDB(); return id;
+}
+function updateRunFinish(id, row){
+  if(!sqliteReady){ const r=memoryFallback.runs.find(x=>x.id===id); if(r) Object.assign(r,row); return; }
+  const s = db.prepare(`UPDATE runs SET correct=?, total=?, accuracy=?, ppm=?, streak_max=?, seconds=? WHERE id=?`);
+  s.run([row.correct,row.total,row.accuracy,row.ppm,row.streak_max,row.seconds,id]); s.free(); persistDB();
+}
+function insertProblem(p){
+  if(!sqliteReady){ memoryFallback.problems.push(p); return; }
+  const s = db.prepare(`INSERT INTO problems (run_id,idx,ts,a,b,op,user_answer,solution,correct,elapsed_ms) VALUES (?,?,?,?,?,?,?,?,?,?)`);
+  s.run([p.run_id,p.idx,p.ts,p.a,p.b,p.op,p.user_answer,p.solution,p.correct?1:0,p.elapsed_ms]); s.free(); persistDB();
+}
+function queryRuns(limit=200){
+  if(!sqliteReady){ return memoryFallback.runs.slice(-limit).reverse(); }
+  const r = db.exec(`SELECT * FROM runs ORDER BY ts DESC LIMIT ${limit}`);
+  if(!r.length) return []; const cols=r[0].columns, rows=r[0].values;
+  return rows.map(R=>Object.fromEntries(R.map((v,i)=>[cols[i],v])));
+}
+function queryProblems(runId){
+  if(!sqliteReady){ return memoryFallback.problems.filter(p=>p.run_id===runId).sort((a,b)=>a.idx-b.idx); }
+  const r = db.exec(`SELECT * FROM problems WHERE run_id=${+runId} ORDER BY idx ASC`);
+  if(!r.length) return []; const cols=r[0].columns, rows=r[0].values;
+  return rows.map(R=>Object.fromEntries(R.map((v,i)=>[cols[i],v])));
+}
+function resetDB(){
+  if(sqliteReady){ db.run('DELETE FROM problems; DELETE FROM runs; DELETE FROM kv;'); persistDB(); }
+  memoryFallback={runs:[], problems:[], kv:{}}; renderBests();
+}
+
+/* -------------------- Utilities -------------------- */
+function showBanner(msg){ const b=$('banner'); b.textContent=msg; b.style.display=msg? 'block':'none'; }
+function $(id){return document.getElementById(id)}
+function rnd(max){return Math.floor(Math.random()*max)+1}
+function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
+function fmtPct(x){return (Math.round(x*1000)/10).toFixed(1)+'%'}
+function fmtPPM(x){return (Math.round(x*10)/10).toFixed(1)}
+function uint8ToBase64(u8){let s=''; for(let i=0;i<u8.length;i++) s+=String.fromCharCode(u8[i]); return btoa(s);}
+function base64ToUint8(b64){const bin=atob(b64),u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i); return u8;}
+
+/* -------------------- App State -------------------- */
+let conf = {
+  difficulty:'medium',
+  mode:'timer', seconds:60, count:20,
+  ops:['+','-','Ã—','Ã·'],
+  cleanDiv:true,
+  adaptive:true,
+  caps:{ plus:100, minus:100, times:12, divDiv:12, divQuo:12 },
+  seeds:{ plus:50, minus:50, times:10, divDiv:10, divQuo:10 },
+  weights:{ '+':25, '-':25, 'Ã—':25, 'Ã·':25 },
+  mastery:{
+    enabled:true,
+    order: ['+','-','Ã—','Ã·'],
+    targets:{
+      '+':{acc:95, cnt:20},
+      '-':{acc:95, cnt:20},
+      'Ã—':{acc:95, cnt:20},
+      'Ã·':{acc:95, cnt:20}
+    }
+  }
+};
+let currentMax = { plus:10, minus:10, times:10, divDiv:10, divQuo:10 };
+let masteryState = { currentIdx:0, progress:{ '+':{correct:0,total:0}, '-':{correct:0,total:0}, 'Ã—':{correct:0,total:0}, 'Ã·':{correct:0,total:0} } };
+
+let run = {
+  id:null, startedAt:0, elapsed:0, remaining:60, total:0, correct:0, streak:0, streakMax:0,
+  meterTo:0, timerId:null, paused:false, finished:false, problemsTarget:null, lastAnswerAt:0
+};
+let cur = {a:0,b:0,op:'+',solution:0,idx:0};
+
+/* -------------------- Settings I/O -------------------- */
+function readSettings(){
+  conf.difficulty = $('difficulty').value;
+  conf.mode = $('mode').value;
+  conf.seconds = parseInt($('time').value,10);
+  conf.count = parseInt($('count').value,10);
+  conf.ops = [...document.querySelectorAll('.op:checked')].map(i=>i.value);
+  conf.cleanDiv = $('cleanDiv').checked;
+  conf.adaptive = $('adaptive').checked;
+  conf.mastery.enabled = $('mastery').checked;
+
+  conf.caps.plus  = clamp(parseInt($('capPlus').value,10)||100, 5, 999);
+  conf.caps.minus = clamp(parseInt($('capMinus').value,10)||100, 5, 999);
+  conf.caps.times = clamp(parseInt($('capTimes').value,10)||12,  2, 999);
+  conf.caps.divDiv= clamp(parseInt($('capDivDiv').value,10)||12,  2, 999);
+  conf.caps.divQuo= clamp(parseInt($('capDivQuo').value,10)||12,  2, 999);
+
+  conf.seeds.plus  = clamp(parseInt($('seedPlus').value,10)||50, 5, 999);
+  conf.seeds.minus = clamp(parseInt($('seedMinus').value,10)||50, 5, 999);
+  conf.seeds.times = clamp(parseInt($('seedTimes').value,10)||10, 2, 999);
+  conf.seeds.divDiv= clamp(parseInt($('seedDivDiv').value,10)||10, 2, 999);
+  conf.seeds.divQuo= clamp(parseInt($('seedDivQuo').value,10)||10, 2, 999);
+
+  conf.weights['+'] = Math.max(0, parseInt($('wPlus').value,10)||0);
+  conf.weights['-'] = Math.max(0, parseInt($('wMinus').value,10)||0);
+  conf.weights['Ã—'] = Math.max(0, parseInt($('wTimes').value,10)||0);
+  conf.weights['Ã·'] = Math.max(0, parseInt($('wDiv').value,10)||0);
+
+  const ord = $('masteryOrder').value.replaceAll(' ', '').split(',').filter(x=>['+','-','Ã—','Ã·'].includes(x));
+  conf.mastery.order = ord.length? ord : ['+','-','Ã—','Ã·'];
+
+  conf.mastery.targets['+'].acc = clamp(parseInt($('mAccPlus').value,10)||95, 50, 100);
+  conf.mastery.targets['+'].cnt = clamp(parseInt($('mCntPlus').value,10)||20, 5, 500);
+  conf.mastery.targets['-'].acc = clamp(parseInt($('mAccMinus').value,10)||95, 50, 100);
+  conf.mastery.targets['-'].cnt = clamp(parseInt($('mCntMinus').value,10)||20, 5, 500);
+  conf.mastery.targets['Ã—'].acc = clamp(parseInt($('mAccTimes').value,10)||95, 50, 100);
+  conf.mastery.targets['Ã—'].cnt = clamp(parseInt($('mCntTimes').value,10)||20, 5, 500);
+  conf.mastery.targets['Ã·'].acc = clamp(parseInt($('mAccDiv').value,10)||95, 50, 100);
+  conf.mastery.targets['Ã·'].cnt = clamp(parseInt($('mCntDiv').value,10)||20, 5, 500);
+
+  updateMixPreview();
+}
+function writeCurrentCaps(){
+  $('curPlus').textContent  = currentMax.plus;
+  $('curMinus').textContent = currentMax.minus;
+  $('curTimes').textContent = currentMax.times;
+  $('curDiv').textContent   = `${currentMax.divDiv}Ã·${currentMax.divQuo}`;
+}
+function updateMixPreview(){
+  const w = conf.weights;
+  const sum = w['+']+w['-']+w['Ã—']+w['Ã·'];
+  const pct = sum>0 ? {
+    '+':Math.round(w['+']*100/sum),
+    '-':Math.round(w['-']*100/sum),
+    'Ã—':Math.round(w['Ã—']*100/sum),
+    'Ã·':Math.round(w['Ã·']*100/sum),
+  } : {'+':25,'-':25,'Ã—':25,'Ã·':25};
+  $('mixPreview').textContent = `+ ${pct['+']}%  Â·  âˆ’ ${pct['-']}%  Â·  Ã— ${pct['Ã—']}%  Â·  Ã· ${pct['Ã·']}%`;
+}
+function saveSettings(){
+  readSettings();
+  kvSet('settings', conf);
+  kvSet('mastery_state', masteryState);
+}
+function loadSettings(){
+  const s = kvGet('settings');
+  if(!s) return;
+  conf = Object.assign(conf, s);
+  // write back to inputs
+  $('difficulty').value = conf.difficulty;
+  $('mode').value = conf.mode;
+  $('time').value = conf.seconds;
+  $('count').value = conf.count;
+  for(const op of ['+','-','Ã—','Ã·']){
+    const box = [...document.querySelectorAll('.op')].find(i=>i.value===op);
+    if(box) box.checked = conf.ops.includes(op);
+  }
+  $('cleanDiv').checked = conf.cleanDiv;
+  $('adaptive').checked = conf.adaptive;
+  $('mastery').checked = conf.mastery.enabled;
+
+  $('capPlus').value  = conf.caps.plus;  $('capMinus').value = conf.caps.minus; $('capTimes').value = conf.caps.times;
+  $('capDivDiv').value= conf.caps.divDiv; $('capDivQuo').value= conf.caps.divQuo;
+
+  $('seedPlus').value = conf.seeds.plus; $('seedMinus').value=conf.seeds.minus; $('seedTimes').value=conf.seeds.times;
+  $('seedDivDiv').value=conf.seeds.divDiv; $('seedDivQuo').value=conf.seeds.divQuo;
+
+  $('wPlus').value = conf.weights['+']; $('wMinus').value = conf.weights['-']; $('wTimes').value = conf.weights['Ã—']; $('wDiv').value = conf.weights['Ã·'];
+
+  $('mAccPlus').value = conf.mastery.targets['+'].acc; $('mCntPlus').value = conf.mastery.targets['+'].cnt;
+  $('mAccMinus').value= conf.mastery.targets['-'].acc; $('mCntMinus').value= conf.mastery.targets['-'].cnt;
+  $('mAccTimes').value= conf.mastery.targets['Ã—'].acc; $('mCntTimes').value= conf.mastery.targets['Ã—'].cnt;
+  $('mAccDiv').value  = conf.mastery.targets['Ã·'].acc; $('mCntDiv').value  = conf.mastery.targets['Ã·'].cnt;
+
+  $('masteryOrder').value = conf.mastery.order.join(',');
+
+  updateMixPreview();
+}
+
+/* -------------------- Difficulty seeds -------------------- */
+function seedByDifficulty(){
+  // Start from seeds but not above caps
+  currentMax.plus  = Math.min(conf.seeds.plus,  conf.caps.plus);
+  currentMax.minus = Math.min(conf.seeds.minus, conf.caps.minus);
+  currentMax.times = Math.min(conf.seeds.times, conf.caps.times);
+  currentMax.divDiv= Math.min(conf.seeds.divDiv, conf.caps.divDiv);
+  currentMax.divQuo= Math.min(conf.seeds.divQuo, conf.caps.divQuo);
+  writeCurrentCaps();
+}
+
+/* -------------------- Adaptive logic -------------------- */
+const STREAK_TO_STEP = 5, STEP_PLUS_MINUS = 10, STEP_TIMES = 2, STEP_DIV = 1, BACKOFF_MISS = 2;
+let recentCorrectness = [];
+function onCorrect(op){
+  recentCorrectness.push(true); if(recentCorrectness.length>10) recentCorrectness.shift();
+  if(!conf.adaptive) return;
+  if(run.streak>0 && run.streak % STREAK_TO_STEP === 0){
+    if(op==='+') currentMax.plus = Math.min(conf.caps.plus, currentMax.plus + STEP_PLUS_MINUS);
+    if(op==='-') currentMax.minus= Math.min(conf.caps.minus,currentMax.minus+ STEP_PLUS_MINUS);
+    if(op==='Ã—') currentMax.times= Math.min(conf.caps.times,currentMax.times+ STEP_TIMES);
+    if(op==='Ã·'){ currentMax.divDiv = Math.min(conf.caps.divDiv, currentMax.divDiv + STEP_DIV);
+                  currentMax.divQuo = Math.min(conf.caps.divQuo, currentMax.divQuo + STEP_DIV); }
+    writeCurrentCaps();
+  }
+}
+function onWrong(op){
+  recentCorrectness.push(false); if(recentCorrectness.length>10) recentCorrectness.shift();
+  if(!conf.adaptive) return;
+  const last3 = recentCorrectness.slice(-3); const wrongs = last3.filter(x=>!x).length;
+  if(wrongs >= BACKOFF_MISS){
+    if(op==='+') currentMax.plus = Math.max(5, currentMax.plus - STEP_PLUS_MINUS);
+    if(op==='-') currentMax.minus= Math.max(5, currentMax.minus- STEP_PLUS_MINUS);
+    if(op==='Ã—') currentMax.times= Math.max(2, currentMax.times- STEP_TIMES);
+    if(op==='Ã·'){ currentMax.divDiv = Math.max(2, currentMax.divDiv - STEP_DIV);
+                  currentMax.divQuo = Math.max(2, currentMax.divQuo - STEP_DIV); }
+    writeCurrentCaps();
+  }
+}
+
+/* -------------------- Operator picking -------------------- */
+function pickOp(){
+  const enabled = conf.ops;
+  if(enabled.length===0) return '+';
+
+  if(conf.mastery.enabled){
+    const op = conf.mastery.order[ masteryState.currentIdx % conf.mastery.order.length ];
+    if(enabled.includes(op)) return op;
+    // if current mastery op disabled, advance until find enabled
+    for(let i=0;i<conf.mastery.order.length;i++){
+      const tryOp = conf.mastery.order[(masteryState.currentIdx+i)%conf.mastery.order.length];
+      if(enabled.includes(tryOp)) return tryOp;
+    }
+  }
+  // Weighted random among enabled
+  const weights = enabled.map(op => Math.max(0, conf.weights[op]||0));
+  const sum = weights.reduce((a,b)=>a+b,0) || enabled.length;
+  const rndv = Math.random()*sum;
+  let acc=0;
+  for(let i=0;i<enabled.length;i++){
+    acc += (weights[i]|| (sum/enabled.length));
+    if(rndv <= acc) return enabled[i];
+  }
+  return enabled[0];
+}
+
+/* -------------------- Mastery progress -------------------- */
+function resetMasteryProgress(){
+  masteryState.progress = { '+':{correct:0,total:0}, '-':{correct:0,total:0}, 'Ã—':{correct:0,total:0}, 'Ã·':{correct:0,total:0} };
+}
+function masteryTargetsMet(op){
+  const p = masteryState.progress[op] || {correct:0,total:0};
+  const acc = p.total? (p.correct/p.total)*100 : 0;
+  const tgt = conf.mastery.targets[op];
+  return acc >= tgt.acc && p.correct >= tgt.cnt;
+}
+function advanceMasteryIfNeeded(){
+  if(!conf.mastery.enabled) return;
+  const op = conf.mastery.order[ masteryState.currentIdx % conf.mastery.order.length ];
+  if(masteryTargetsMet(op)){
+    masteryState.currentIdx++;
+    kvSet('mastery_state', masteryState); // persist advancement
+  }
+  updateMasteryBadge();
+}
+function updateMasteryBadge(){
+  const badge = $('masteryBadge');
+  if(!conf.mastery.enabled){ badge.style.display='none'; return; }
+  const op = conf.mastery.order[ masteryState.currentIdx % conf.mastery.order.length ];
+  const p = masteryState.progress[op] || {correct:0,total:0};
+  const acc = p.total? (p.correct/p.total)*100 : 0;
+  const tgt = conf.mastery.targets[op];
+  badge.textContent = `Mastery: ${op}  —“  ${p.correct}/${tgt.cnt} correct, ${acc.toFixed(0)}% / ${tgt.acc}%`;
+  badge.style.display = 'inline-block';
+}
+
+/* -------------------- Problem Generation -------------------- */
+function nextProblem(){
+  cur.op = pickOp();
+  let a,b,sol;
+  if(cur.op==='+'){ a=rnd(currentMax.plus); b=rnd(currentMax.plus); sol=a+b; }
+  else if(cur.op==='-'){ a=rnd(currentMax.minus); b=rnd(currentMax.minus); if(a<b){[a,b]=[b,a]} sol=a-b; }
+  else if(cur.op==='Ã—'){ a=rnd(currentMax.times); b=rnd(currentMax.times); sol=a*b; }
+  else{ // Ã·
+    if(conf.cleanDiv){
+      const divisor = rnd(currentMax.divDiv);
+      const quotient= rnd(currentMax.divQuo);
+      a = divisor * quotient; b = divisor; sol = quotient;
+    }else{
+      a = rnd(currentMax.divDiv * currentMax.divQuo);
+      b = rnd(currentMax.divDiv)||1; sol = Math.trunc(a/b);
+    }
+  }
+  cur.a=a; cur.b=b; cur.solution=sol;
+  $('problem').textContent = `${a} ${cur.op} ${b}`;
+  const ans = $('answer'); ans.value=''; ans.focus();
+  run.lastAnswerAt = Date.now();
+}
+
+/* -------------------- Quiz Lifecycle -------------------- */
+function start(){
+  readSettings();
+  seedByDifficulty();
+  resetMasteryProgress();
+  const persistedState = kvGet('mastery_state'); if(persistedState) masteryState.currentIdx = persistedState.currentIdx || 0;
+  updateMasteryBadge();
+
+  run.id = null; run.total=0; run.correct=0; run.streak=0; run.streakMax=0; run.finished=false; run.paused=false;
+  run.startedAt=Date.now(); run.meterTo=0; recentCorrectness.length=0;
+
+  if(conf.mode==='timer'){ run.remaining = conf.seconds; $('timeLeft').textContent = `${run.remaining}s`; }
+  else{ run.problemsTarget = conf.count; $('timeLeft').textContent = `${conf.count} q`; }
+
+  $('score').textContent = '0'; $('total').textContent='0'; $('acc').textContent='100%'; $('ppm').textContent='0.0'; $('streak').textContent='0';
+  $('meter').style.width='0%'; $('feedback').textContent=''; showPanel('quizPanel');
+
+  const runRow = { ts: Date.now(), mode: conf.mode, seconds: conf.mode==='timer'? conf.seconds:0, count_target: conf.mode==='count'? conf.count:null, difficulty: conf.difficulty, ops: conf.ops.join('') };
+  run.id = insertRunStart(runRow);
+
+  clearInterval(run.timerId); run.timerId = setInterval(tick, 1000);
+  nextProblem();
+}
+function tick(){
+  if(run.paused || run.finished) return;
+  if(conf.mode==='timer'){
+    run.remaining--; if(run.remaining<=0){ finish(); return; }
+    $('timeLeft').textContent = `${run.remaining}s`;
+    $('meter').style.width = `${((conf.seconds-run.remaining)/conf.seconds)*100}%`;
+  }else{
+    $('timeLeft').textContent = `${(conf.count-run.total)} q`;
+    $('meter').style.width = `${(run.total/conf.count)*100}%`;
+    if(run.total>=conf.count){ finish(); return; }
+  }
+}
+function pauseToggle(){ if(run.finished) return; run.paused=!run.paused; $('pauseBtn').textContent = run.paused ? 'Resume (Esc)' : 'Pause (Esc)'; }
+function quit(){ if(!run.finished) finish(true); }
+function finish(cancelled=false){
+  run.finished=true; clearInterval(run.timerId);
+  const elapsedSec = Math.max(1, Math.round((Date.now()-run.startedAt)/1000));
+  const accuracy = run.total ? (run.correct/run.total) : 0;
+  const ppm = (run.total / (elapsedSec/60));
+  if(!cancelled){
+    updateRunFinish(run.id, { correct: run.correct, total: run.total, accuracy: +(accuracy*100).toFixed(1), ppm: +fmtPPM(ppm), streak_max: run.streakMax, seconds: conf.mode==='timer'? conf.seconds : elapsedSec });
+  }
+  renderBests();
+  $('rCorrect').textContent = run.correct; $('rTotal').textContent = run.total;
+  $('rAcc').textContent = (accuracy*100).toFixed(1)+'%'; $('rPPM').textContent = fmtPPM(ppm);
+  $('rStreak').textContent = run.streakMax; $('rMode').textContent = conf.mode==='timer'? `Timed (${conf.seconds}s)` : `Count (${conf.count})`;
+  $('rDiff').textContent = conf.difficulty; $('rOps').textContent = conf.ops.join('');
+  showPanel('resultsPanel');
+}
+
+/* -------------------- Answer handling + logging + mastery -------------------- */
+function submitAnswer(){
+  if(run.finished || run.paused) return;
+  const raw = $('answer').value.trim(); if(raw==='') return;
+  const val = Number(raw); const correct = (val === cur.solution); const elapsed = Date.now() - (run.lastAnswerAt || run.startedAt);
+
+  run.total++;
+  if(correct){ run.correct++; run.streak++; run.streakMax=Math.max(run.streakMax, run.streak); $('feedback').innerHTML = `<span class="ok">Correct!</span>`; onCorrect(cur.op); }
+  else{ run.streak=0; $('feedback').innerHTML = `<span class="bad">Wrong.</span> <span class="muted">(${cur.a} ${cur.op} ${cur.b} = <b>${cur.solution}</b>)</span>`; onWrong(cur.op); }
+
+  // mastery progress
+  const mp = masteryState.progress[cur.op] || (masteryState.progress[cur.op]={correct:0,total:0});
+  mp.total++; if(correct) mp.correct++;
+  updateMasteryBadge(); advanceMasteryIfNeeded();
+
+  // UI stats
+  $('score').textContent = String(run.correct); $('total').textContent = String(run.total);
+  const acc = run.correct / Math.max(1, run.total); $('acc').textContent = fmtPct(acc);
+  const elapsedSec = Math.max(1, Math.round((Date.now()-run.startedAt)/1000));
+  const ppm = run.total / (elapsedSec/60); $('ppm').textContent = fmtPPM(ppm); $('streak').textContent = String(run.streak);
+
+  // Log problem
+  insertProblem({ run_id: run.id, idx: run.total, ts: Date.now(), a: cur.a, b: cur.b, op: cur.op, user_answer: isNaN(val)? null : val, solution: cur.solution, correct: !!correct, elapsed_ms: elapsed });
+
+  if(conf.mode==='count' && run.total>=conf.count){ finish(); return; }
+  nextProblem();
+}
+
+/* -------------------- History & Bests -------------------- */
+function renderBests(){
+  const b = queryBests();
+  $('bestPPM').textContent = b.ppm!=null ? fmtPPM(b.ppm) : '—';
+  $('bestAcc').textContent = b.acc!=null ? (b.acc.toFixed ? b.acc.toFixed(1) : b.acc)+'%' : '—';
+  $('bestStreak').textContent = b.streak!=null ? b.streak : '—';
+}
+function queryBests(){
+  const rows = queryRuns(10000);
+  if(!rows.length) return {ppm:null, acc:null, streak:null};
+  return {
+    ppm: rows.reduce((a,b)=> (b.ppm||0)>(a.ppm||0)?b:a).ppm,
+    acc: rows.reduce((a,b)=> (b.accuracy||0)>(a.accuracy||0)?b:a).accuracy,
+    streak: rows.reduce((a,b)=> (b.streak_max||0)>(a.streak_max||0)?b:a).streak_max
+  };
+}
+function openHistory(){
+  const tbody = $('historyTable').querySelector('tbody'); tbody.innerHTML='';
+  const rows = queryRuns(500);
+  for(const r of rows){
+    const tr=document.createElement('tr'); const d = new Date(r.ts);
+    tr.innerHTML = `
+      <td>${d.toLocaleString()}</td><td>${r.mode}</td><td>${r.seconds ?? ''}</td><td>${r.count_target ?? ''}</td>
+      <td>${r.difficulty}</td><td>${r.ops}</td><td>${r.correct}</td><td>${r.total}</td>
+      <td>${(r.accuracy ?? 0).toFixed ? r.accuracy.toFixed(1) : r.accuracy}</td>
+      <td>${(r.ppm ?? 0).toFixed ? r.ppm.toFixed(1) : r.ppm}</td>
+      <td>${r.streak_max}</td>`;
+    tbody.appendChild(tr);
+  }
+  showPanel('historyPanel');
+}
+function exportCSV(){
+  const rows = queryRuns(100000);
+  const header = ['ts','mode','seconds','count_target','difficulty','ops','correct','total','accuracy','ppm','streak_max'];
+  const out = [header.join(',')].concat(rows.map(r => header.map(k => r[k] ?? '').join(','))).join('\n');
+  downloadCSV(out,'math_drills_history.csv');
+}
+function downloadCSV(text, name){
+  const blob = new Blob([text], {type:'text/csv'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+}
+
+/* -------------------- Review (per-problem) -------------------- */
+function openReview(runId){
+  const tbody = $('problemsTable').querySelector('tbody'); tbody.innerHTML='';
+  const rows = queryProblems(runId);
+  for(const r of rows){
+    const d = new Date(r.ts); const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${r.idx}</td><td>${d.toLocaleTimeString()}</td><td>${r.a} ${r.op} ${r.b}</td>
+                    <td>${r.user_answer ?? ''}</td><td>${r.correct? '<span class="ok">âœ“</span>':'<span class="bad">âœ•</span>'}</td>
+                    <td>${r.solution}</td><td>${r.elapsed_ms}</td>`;
+    tbody.appendChild(tr);
+  }
+  showPanel('reviewPanel');
+}
+function exportProblemsCSV(runId){
+  const rows = queryProblems(runId);
+  const header = ['idx','ts','a','b','op','user_answer','solution','correct','elapsed_ms'];
+  const out = [header.join(',')].concat(rows.map(r => header.map(k => r[k] ?? '').join(','))).join('\n');
+  downloadCSV(out,`math_drills_run_${runId}_problems.csv`);
+}
+
+/* -------------------- Panels & UI wiring -------------------- */
+function showPanel(id){ for(const el of [ 'settings','quizPanel','resultsPanel','historyPanel','reviewPanel' ].map($)) el.style.display='none'; $(id).style.display='block'; }
+function onModeChange(){ const isTimer = $('mode').value==='timer'; $('timerOpts').style.display = isTimer? 'inline-flex':'none'; $('countOpts').style.display = isTimer? 'none':'inline-flex'; }
+
+/* -------------------- Events -------------------- */
+window.addEventListener('load', async ()=>{
+  await initSQLite();
+  loadSettings();
+  renderBests();
+  updateMixPreview();
+
+  $('startBtn').addEventListener('click', start);
+  $('resetDBBtn').addEventListener('click', ()=>{ if(confirm('Delete ALL saved results and settings?')) resetDB(); });
+  $('saveSettingsBtn').addEventListener('click', saveSettings);
+
+  $('pauseBtn').addEventListener('click', pauseToggle);
+  $('quitBtn').addEventListener('click', quit);
+  $('againBtn').addEventListener('click', ()=>showPanel('settings'));
+  $('viewHistoryBtn').addEventListener('click', openHistory);
+  $('closeHistoryBtn').addEventListener('click', ()=>showPanel('resultsPanel'));
+  $('exportCSVBtn').addEventListener('click', exportCSV);
+  $('mode').addEventListener('change', onModeChange);
+  $('answer').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ submitAnswer(); }});
+  document.addEventListener('input', (e)=>{ if(['wPlus','wMinus','wTimes','wDiv'].includes(e.target.id)) { readSettings(); } });
+  document.addEventListener('keydown', (e)=>{
+    if(e.code==='Space'){
+      e.preventDefault();
+      const q = $('quizPanel').style.display==='block', r = $('resultsPanel').style.display==='block';
+      if(!q && !r) start(); else if(q) submitAnswer(); else if(r) showPanel('settings');
+    }else if(e.key==='Escape'){ if($('quizPanel').style.display==='block') pauseToggle(); }
+  });
+
+  $('reviewRunBtn').addEventListener('click', ()=> openReview(run.id));
+  $('closeReviewBtn').addEventListener('click', ()=> showPanel('resultsPanel'));
+  $('exportProblemsBtn').addEventListener('click', ()=> exportProblemsCSV(run.id));
+});
+
+/* -------------------- Expose for debugging -------------------- */
+window.__md = { db:()=>db, queryRuns, queryProblems, kvGet, kvSet };
+</script>
+  <script src="../shared/help-content.js"></script>
+  <script src="../shared/f1-help-nav.js"></script>
+</body>
+</html>
