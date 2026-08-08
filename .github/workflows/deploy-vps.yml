@@ -1,0 +1,160 @@
+name: Deploy GoGames.XYZ to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gogames-vps-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      vars.GOGAMES_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DEPLOY_HOST: ${{ secrets.GOGAMES_VPS_HOST }}
+      DEPLOY_USER: ${{ secrets.GOGAMES_VPS_USER }}
+      DEPLOY_PORT: ${{ secrets.GOGAMES_VPS_PORT || '22' }}
+      DEPLOY_PATH: ${{ secrets.GOGAMES_VPS_PATH }}
+      KNOWN_HOSTS: ${{ secrets.GOGAMES_VPS_KNOWN_HOSTS }}
+      SSH_KEY: ${{ secrets.GOGAMES_VPS_SSH_KEY }}
+      SERVER_ENV: ${{ secrets.GOGAMES_SERVER_ENV }}
+      PUBLIC_URL: ${{ vars.GOGAMES_PUBLIC_URL || 'https://gogames.xyz' }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/validate-spades.js files
+          node scripts/validate-spades.js syntax
+          node scripts/validate-spades.js references
+          node scripts/validate-spades.js boundary
+          node scripts/validate-spades.js offline
+          node --check server/server.js
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH KNOWN_HOSTS SSH_KEY SERVER_ENV; do
+            if [[ -z "${!name}" ]]; then
+              echo "A required GoGames GitHub secret is missing ($name)." >&2
+              exit 1
+            fi
+          done
+          [[ "$DEPLOY_PATH" == /* ]] || { echo 'GOGAMES_VPS_PATH must be absolute.' >&2; exit 1; }
+
+      - name: Configure trusted SSH connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Build immutable release
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir release
+          git archive --format=tar "$DEPLOY_SHA" | tar -x -C release
+          BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          cat > release/gogames-release.json <<EOF
+          {"commit":"$DEPLOY_SHA","built_at":"$BUILT_AT","source":"github-actions"}
+          EOF
+          tar -C release -czf gogames-release.tar.gz .
+
+      - name: Upload release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          scp -P "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 \
+            gogames-release.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/tmp/gogames-release-${{ github.sha }}.tar.gz"
+
+      - name: Install runtime environment outside the release
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$DEPLOY_USER@$DEPLOY_HOST" \
+            "install -d -m 0755 '$DEPLOY_PATH/shared'; umask 077; cat > '$DEPLOY_PATH/shared/server.env'" <<< "$SERVER_ENV"
+
+      - name: Activate release atomically
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" -i ~/.ssh/id_ed25519 "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' bash -s" <<'REMOTE'
+          set -euo pipefail
+          archive="/tmp/gogames-release-${DEPLOY_SHA}.tar.gz"
+          releases="${DEPLOY_PATH}/releases"
+          release="${releases}/${DEPLOY_SHA}"
+          staging="${releases}/.${DEPLOY_SHA}.staging"
+          shared="${DEPLOY_PATH}/shared"
+
+          test -f "$archive"
+          install -d -m 0755 "$DEPLOY_PATH" "$releases" "$shared"
+          rm -rf "$staging"
+          install -d -m 0755 "$staging"
+          tar -xzf "$archive" -C "$staging"
+          test -f "$staging/index.html"
+          test -f "$staging/gogames-release.json"
+
+          # Keep runtime credentials outside immutable releases and never in git.
+          test -s "$shared/server.env"
+          ln -s "$shared/server.env" "$staging/server/.env"
+          (
+            cd "$staging/server"
+            npm ci --omit=dev --no-audit --no-fund
+          )
+
+          rm -rf "$release"
+          mv "$staging" "$release"
+          ln -s "$release" "${DEPLOY_PATH}/.current-next"
+          mv -Tf "${DEPLOY_PATH}/.current-next" "${DEPLOY_PATH}/current"
+
+          if command -v pm2 >/dev/null 2>&1; then
+            pm2 delete gogames >/dev/null 2>&1 || true
+            pm2 start "$DEPLOY_PATH/current/server/server.js" --name gogames --cwd "$DEPLOY_PATH/current/server"
+            pm2 save
+          else
+            echo 'pm2 is not installed; static files were deployed but the GoGames API was not restarted.' >&2
+            exit 1
+          fi
+
+          rm -f "$archive"
+          find "$releases" -mindepth 1 -maxdepth 1 -type d -name '[0-9a-f]*' -printf '%T@ %p\n' |
+            sort -nr | tail -n +6 | cut -d' ' -f2- | xargs -r rm -rf
+          REMOTE
+
+      - name: Verify public release
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent --retry 8 --retry-all-errors --retry-delay 3 \
+            -H 'Cache-Control: no-cache' "$PUBLIC_URL/gogames-release.json?sha=$DEPLOY_SHA" -o gogames-release.json
+          grep -Fq "$DEPLOY_SHA" gogames-release.json

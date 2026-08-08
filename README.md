@@ -93,6 +93,10 @@ Supported model providers:
 
 ## Deployment (VPS)
 
+The production deployment is managed by GitHub Actions. See
+[DEPLOYMENT.md](DEPLOYMENT.md) for the VPS layout, required secrets, and
+repository variables.
+
 ```bash
 # Install Node.js 18+
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
