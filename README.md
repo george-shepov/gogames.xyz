@@ -102,6 +102,10 @@ server/
 
 ## Validation
 
+The production deployment is managed by GitHub Actions. See
+[DEPLOYMENT.md](DEPLOYMENT.md) for the VPS layout, required secrets, and
+repository variables.
+
 ```bash
 cd server
 npm run check
