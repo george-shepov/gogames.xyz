@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Server-Verified Rewards — GoGames.XYZ</title>
+<meta name="description" content="How GoGames separates ordinary browser play from server-verified, compliance-gated reward claims.">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#08090a;color:#d0c8b8;font-family:'Segoe UI',system-ui,sans-serif;line-height:1.65}:root{--panel:#0e1114;--border:#1a2030;--gold:#c9a84c;--muted:#718096;--green:#10b981;--red:#ef4444}a{color:var(--gold)}nav{height:58px;padding:0 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;background:rgba(8,9,10,.94);position:sticky;top:0}.logo{text-decoration:none;font-weight:850;font-size:20px}.logo span{color:white;font-weight:300}.back{margin-left:auto;text-decoration:none;color:#d0c8b8;border:1px solid var(--border);border-radius:8px;padding:7px 14px;font-size:13px}.back:hover{border-color:var(--gold)}main{max-width:980px;margin:0 auto;padding:54px 20px 80px}.badge{display:inline-block;border:1px solid rgba(16,185,129,.35);background:rgba(16,185,129,.1);color:#7ef0bd;border-radius:99px;padding:5px 13px;font-size:11px;text-transform:uppercase;letter-spacing:.1em}h1{font-size:clamp(34px,6vw,62px);line-height:1.06;color:white;margin:20px 0 18px}.lead{font-size:18px;color:var(--muted);max-width:790px}.status{margin:34px 0;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}.status strong{color:white}.pill{border:1px solid rgba(201,168,76,.35);border-radius:99px;padding:4px 11px;color:var(--gold);font-size:12px}.warning{border-left:4px solid var(--red);background:rgba(239,68,68,.07);padding:18px 20px;border-radius:10px;margin:28px 0}.warning strong{color:white}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:28px 0}.card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:20px}.card h3{color:white;margin:0 0 8px;font-size:16px}.card p{color:var(--muted);font-size:13px;margin:0}.section{margin-top:48px}.section h2{color:white;font-size:28px;margin-bottom:10px}.section>p{color:var(--muted)}ol{padding-left:22px}li{margin:10px 0}code{background:#11161d;border:1px solid var(--border);padding:2px 6px;border-radius:5px;color:#b9e7ff}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;margin-top:18px}.table th,.table td{text-align:left;border-bottom:1px solid var(--border);padding:12px}.table th{color:white;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.table td{font-size:13px;color:var(--muted)}.good{color:#7ef0bd!important}.bad{color:#ff9a9a!important}.cta{margin-top:44px;border:1px solid rgba(201,168,76,.35);background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(59,130,246,.07));padding:26px;border-radius:15px}.cta h2{margin-top:0;color:white}.btn{display:inline-block;margin-top:10px;padding:10px 18px;border-radius:8px;background:var(--gold);color:#08090a;text-decoration:none;font-weight:800}@media(max-width:600px){main{padding-top:36px}.status{display:block}.pill{display:inline-block;margin-top:10px}}
+</style>
+</head>
+<body>
+<nav><a class="logo" href="/">GoGames<span>.XYZ</span></a><a class="back" href="/">← Games</a></nav>
+<main>
+  <span class="badge">Server verification + compliance gate</span>
+  <h1>A browser score is never a prize claim.</h1>
+  <p class="lead">GoGames keeps ordinary game play separate from reward-bearing play. A game page may display a score, winner, streak, or leaderboard position, but none of those browser values can create or settle a reward.</p>
+
+  <div class="status">
+    <div><strong>Current reward service</strong><br><span id="status-detail">Checking safe server status…</span></div>
+    <span class="pill" id="status-pill">Checking</span>
+  </div>
+
+  <div class="warning"><strong>Existing games are practice/entertainment unless a server verifier explicitly says otherwise.</strong><br>Chess rooms, arcade scores, FieldKit games, and browser-hosted AI battles cannot trigger payouts. Their JavaScript and network traffic are controlled by the player.</div>
+
+  <div class="section">
+    <h2>The trust boundary</h2>
+    <div class="grid">
+      <div class="card"><h3>1. Signed identity</h3><p>The authenticated account service issues a short-lived token. A player cannot choose another reward identity in the request body.</p></div>
+      <div class="card"><h3>2. Compliance profile</h3><p>Age, identity, sanctions, self-exclusion, account restrictions, terms, device risk, and jurisdiction are controlled server-side.</p></div>
+      <div class="card"><h3>3. Server challenge</h3><p>The verifier creates the challenge and privately stores the answer or authoritative game state.</p></div>
+      <div class="card"><h3>4. Server score</h3><p>The player submits inputs only. The finish endpoint accepts no score, prize amount, or winner supplied by the browser.</p></div>
+      <div class="card"><h3>5. One claim</h3><p>A completed session can create exactly one idempotent claim with an integrity hash and audit record.</p></div>
+      <div class="card"><h3>6. Human approval</h3><p>A qualifying claim remains pending until a compliance operator approves it. Live payout is a separate signed service call.</p></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>First supported verifier</h2>
+    <p><code>math-sprint-v1</code> is deliberately small and auditable. The server generates each arithmetic question, timestamps each answer, rejects impossible answer cadence, calculates correctness and elapsed time, applies the threshold and daily cap, then creates a reviewable claim.</p>
+    <p>This does not make Snake, Tetris, ChronoQuest, or any other browser game reward-safe. Each future reward game needs its own server-authoritative rules adapter.</p>
+  </div>
+
+  <div class="section">
+    <h2>Reward modes</h2>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Mode</th><th>Verified sessions</th><th>Claims</th><th>Payout</th></tr></thead><tbody>
+      <tr><td><code>off</code></td><td class="bad">Blocked</td><td class="bad">Blocked</td><td class="bad">Impossible</td></tr>
+      <tr><td><code>review</code></td><td class="good">Allowed</td><td class="good">Pending review</td><td class="bad">Impossible</td></tr>
+      <tr><td><code>live</code></td><td class="good">Allowed</td><td class="good">Manual approval</td><td class="good">Signed, idempotent webhook</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="section">
+    <h2>What must pass</h2>
+    <ol>
+      <li>Reward service is safely configured and not in <code>off</code> mode.</li>
+      <li>Signed identity is valid, unexpired, and within the maximum token lifetime.</li>
+      <li>Age and identity are verified.</li>
+      <li>Sanctions check is clear; account is not restricted or self-excluded.</li>
+      <li>Required terms version was accepted.</li>
+      <li>Country and region are explicitly allowlisted after legal/compliance approval.</li>
+      <li>Server-calculated score meets the program threshold.</li>
+      <li>Daily paid-reward cap is not exceeded.</li>
+      <li>A human reviewer approves the claim.</li>
+      <li>The payout provider verifies the signature and honors the claim ID as an idempotency key.</li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>GGX is separate</h2>
+    <p>Purchased GGX is non-withdrawable utility credit for approved platform services. It does not represent cash, reward eligibility, a wager balance, or proof that a player earned anything. Utility purchases and reward claims use separate server paths.</p>
+  </div>
+
+  <div class="cta">
+    <h2>Default behavior: fail closed.</h2>
+    <p>When status is unavailable, configuration is incomplete, or a jurisdiction is absent from the allowlist, no reward should be assumed. Ordinary games remain playable without pretending the score is prize-safe.</p>
+    <a class="btn" href="/games/arena.html">Play practice games</a>
+  </div>
+</main>
+<script>
+(async()=>{const detail=document.getElementById('status-detail');const pill=document.getElementById('status-pill');try{const r=await fetch('/api/rewards/status');if(!r.ok)throw new Error();const s=await r.json();const text={off:'Off — practice only',review:'Review mode — payout impossible',live:'Live mode — manual approval required'}[s.mode]||s.mode;detail.textContent=`${text}. Browser scores accepted: ${s.browserScoresAccepted?'yes':'no'}. Supported verifier: ${(s.supportedGames||[]).join(', ')||'none'}.`;pill.textContent=s.mode.toUpperCase();pill.style.color=s.livePayoutsEnabled?'#7ef0bd':'#c9a84c'}catch{detail.textContent='Status unavailable. Fail closed: no reward is assumed.';pill.textContent='UNAVAILABLE';pill.style.color='#ff9a9a'}})();
+</script>
+</body>
+</html>

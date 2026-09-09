@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GoGames — Payout Approvals</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    body { margin: 0; background: #080b12; color: #eef2ff; }
+    main { width: min(1180px, calc(100% - 32px)); margin: 32px auto 80px; }
+    h1 { margin-bottom: 4px; }
+    .muted { color: #a8b0c3; }
+    .toolbar, article { background: #111725; border: 1px solid #273149; border-radius: 14px; padding: 16px; }
+    .toolbar { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 10px; align-items: end; margin: 20px 0; }
+    label { display: grid; gap: 6px; font-size: 13px; color: #c8d0e2; }
+    input, select, textarea, button { font: inherit; }
+    input, select, textarea { background: #0a0f1a; color: #eef2ff; border: 1px solid #34405b; border-radius: 8px; padding: 10px; }
+    button { border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 700; }
+    button.primary { background: #82f5b5; color: #07140d; }
+    button.danger { background: #ff8794; color: #2b060a; }
+    button.secondary { background: #29344c; color: #eef2ff; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    #queue { display: grid; gap: 14px; }
+    .header { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+    .amount { font-size: 24px; font-weight: 800; }
+    .badge { display: inline-block; border-radius: 999px; padding: 4px 9px; background: #29344c; font-size: 12px; }
+    .checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 14px 0; }
+    .check { border: 1px solid #2c3750; border-radius: 10px; padding: 10px; }
+    .check.pass { border-color: #2d8e5b; }
+    .check.fail { border-color: #b64554; }
+    .check.pending { border-color: #7b6530; }
+    .check strong { display: block; margin-bottom: 4px; }
+    .actions { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: end; }
+    .error { background: #3a1118; border: 1px solid #7e2634; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+    code { color: #c6d5ff; }
+    @media (max-width: 760px) { .toolbar, .actions { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Payout approval queue</h1>
+  <p class="muted">Every payout stays blocked until all seven automated checks pass and a reviewer approves that specific payout.</p>
+
+  <section class="toolbar">
+    <label>Admin API key
+      <input id="adminKey" type="password" autocomplete="off" placeholder="Not stored" />
+    </label>
+    <label>Reviewer ID
+      <input id="reviewer" autocomplete="off" placeholder="name or work email" />
+    </label>
+    <label>State
+      <select id="state">
+        <option value="blocked">Blocked</option>
+        <option value="approved">Approved</option>
+        <option value="processing">Processing</option>
+        <option value="paid">Paid</option>
+        <option value="rejected">Rejected</option>
+        <option value="">All</option>
+      </select>
+    </label>
+    <button class="primary" id="refresh">Refresh</button>
+  </section>
+
+  <div id="error" hidden></div>
+  <section id="queue"></section>
+</main>
+<script>
+(() => {
+  'use strict';
+  const checks = ['identity','age','jurisdiction','sanctions','terms','selfExclusion','limits','manualApproval'];
+  const queue = document.getElementById('queue');
+  const errorBox = document.getElementById('error');
+
+  function money(minor) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(minor / 100);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[char]);
+  }
+
+  function headers() {
+    return {
+      'Content-Type': 'application/json',
+      'X-Admin-Key': document.getElementById('adminKey').value,
+      'X-Reviewer': document.getElementById('reviewer').value,
+    };
+  }
+
+  function showError(message) {
+    errorBox.hidden = !message;
+    errorBox.className = message ? 'error' : '';
+    errorBox.textContent = message || '';
+  }
+
+  function render(payouts) {
+    if (!payouts.length) {
+      queue.innerHTML = '<article><p class="muted">No payouts match this filter.</p></article>';
+      return;
+    }
+    queue.innerHTML = payouts.map((payout) => {
+      const automatedReady = checks.slice(0, -1).every((name) => payout.checks[name]?.status === 'pass');
+      const checkCards = checks.map((name) => {
+        const check = payout.checks[name] || { status: 'pending' };
+        return `<div class="check ${escapeHtml(check.status)}">
+          <strong>${escapeHtml(name)}</strong>
+          <span>${escapeHtml(check.status)}</span>
+          ${check.reasonCode ? `<div class="muted">${escapeHtml(check.reasonCode)}</div>` : ''}
+        </div>`;
+      }).join('');
+      return `<article data-id="${escapeHtml(payout.id)}">
+        <div class="header">
+          <div>
+            <div class="amount">${money(payout.amountMinor)} <span class="badge">${escapeHtml(payout.asset)} · ${escapeHtml(payout.network)}</span></div>
+            <div class="muted">User <code>${escapeHtml(payout.userId)}</code> · source <code>${escapeHtml(payout.sourceEventId)}</code></div>
+            <div class="muted">Destination ${escapeHtml(payout.destination)}</div>
+          </div>
+          <span class="badge">${escapeHtml(payout.state)}</span>
+        </div>
+        <div class="checks">${checkCards}</div>
+        <div class="actions">
+          <label>Review note or rejection reason
+            <textarea rows="2" data-note placeholder="Record the reason for the decision"></textarea>
+          </label>
+          <button class="secondary" data-action="approve" ${automatedReady && payout.state === 'blocked' ? '' : 'disabled'}>Approve</button>
+          <button class="danger" data-action="reject" ${['paid','rejected'].includes(payout.state) ? 'disabled' : ''}>Reject</button>
+        </div>
+      </article>`;
+    }).join('');
+  }
+
+  async function loadQueue() {
+    showError('');
+    const state = document.getElementById('state').value;
+    const response = await fetch(`/api/admin/payouts${state ? `?state=${encodeURIComponent(state)}` : ''}`, { headers: headers() });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+    render(body.payouts || []);
+  }
+
+  async function decide(article, action) {
+    const id = article.dataset.id;
+    const note = article.querySelector('[data-note]').value.trim();
+    const reviewer = document.getElementById('reviewer').value.trim();
+    if (!reviewer) throw new Error('Reviewer ID is required.');
+    if (action === 'reject' && !note) throw new Error('A rejection reason is required.');
+    const payload = action === 'approve' ? { reviewer, note } : { reviewer, reason: note };
+    const response = await fetch(`/api/admin/payouts/${encodeURIComponent(id)}/${action}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(payload)
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+    await loadQueue();
+  }
+
+  document.getElementById('refresh').addEventListener('click', () => loadQueue().catch((error) => showError(error.message)));
+  queue.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+    decide(button.closest('article'), button.dataset.action).catch((error) => showError(error.message));
+  });
+})();
+</script>
+</body>
+</html>
